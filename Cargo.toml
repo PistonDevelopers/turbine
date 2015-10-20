@@ -14,3 +14,7 @@ description = "A 3D game engine with built-in editor"
 [lib]
 name = "turbine"
 path = "./src/lib.rs"
+
+[dependencies]
+bitflags = "0.3.2"
+vecmath = "0.2.0"
