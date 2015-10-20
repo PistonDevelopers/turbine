@@ -1,0 +1,15 @@
+[package]
+name = "turbine"
+version = "0.0.1"
+authors = [
+    "bvssvni <bvssvni@gmail.com>",
+    "binero"
+]
+keywords = ["engine", "3d", "piston"]
+license = "MIT"
+repository = "https://github.com/PistonDevelopers/turbine.git"
+homepage = "https://github.com/PistonDevelopers/turbine"
+
+[lib]
+name = "turbine"
+path = "./src/lib.rs"
