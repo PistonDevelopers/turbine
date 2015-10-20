@@ -5,6 +5,11 @@
 #[macro_use]
 extern crate bitflags;
 extern crate vecmath;
+extern crate piston_window;
+extern crate sdl2_window;
+#[macro_use]
+extern crate gfx;
+extern crate gfx_device_gl;
 
 pub use math::Vec3;
 
@@ -72,5 +77,30 @@ impl World {
 
         swap(&mut self.prev, &mut self.current);
         swap(&mut self.current, &mut self.next);
+    }
+}
+
+/// Starts Turbine pointing it to a project folder.
+pub fn start(_project_folder: &str) {
+    use piston_window::*;
+    use sdl2_window::Sdl2Window;
+    use gfx::traits::*;
+
+    let window: PistonWindow<(), Sdl2Window> =
+        WindowSettings::new("Turbine", [1024, 768])
+        .exit_on_esc(true)
+        .samples(4)
+        .build()
+        .unwrap();
+    for e in window {
+        e.draw_3d(|stream| {
+            stream.clear(
+                gfx::ClearData {
+                    color: [0.3, 0.3, 0.3, 1.0],
+                    depth: 1.0,
+                    stencil: 0,
+                }
+            );
+        });
     }
 }
