@@ -1,0 +1,20 @@
+_seps: ""
+3 aabb = ["aabb" .w?
+    "min" .w?
+        .$_:"min_x" .w?
+        .$_:"min_y" .w?
+        .$_:"min_z" .w?
+    "max" .w?
+        .$_:"max_x" .w?
+        .$_:"max_y" .w?
+        .$_:"max_z"
+]
+2 position = ["position" .w? .$_:"x" .w? .$_:"y" .w? .$_:"z"]
+1 header = [.._seps!:"name" .w? .$:"entity_id"]
+0 document = [
+    header:"header" .w?
+    .l({
+        position:"position"
+        aabb:"aabb"
+    })
+]
