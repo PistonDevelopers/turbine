@@ -11,10 +11,15 @@ extern crate sdl2_window;
 extern crate gfx;
 extern crate gfx_device_gl;
 extern crate piston_meta;
+extern crate camera_controllers;
+extern crate gfx_debug_draw;
+extern crate gfx_text;
 
 pub use math::Vec3;
+pub use math::Mat4;
 
 pub mod math;
+pub mod render;
 
 /// The maximum number of entities.
 pub const ENTITY_COUNT: usize = 10000;
@@ -85,24 +90,72 @@ impl World {
 pub fn start(_project_folder: &str) {
     use piston_window::*;
     use sdl2_window::Sdl2Window;
-    use gfx::traits::*;
+    use camera_controllers::*;
+    use gfx_debug_draw::DebugRenderer;
+    use math::Matrix;
 
-    let window: PistonWindow<(), Sdl2Window> =
+    println!("
+~~~~~~~~   TURBINE   ~~~~~~~~\n\
+=============================\n\
+Camera navigation (on/off): C\n\
+Camera control: WASD\n\
+");
+
+    let mut window: PistonWindow<(), Sdl2Window> =
         WindowSettings::new("Turbine", [1024, 768])
         .exit_on_esc(true)
         .samples(4)
         .build()
         .unwrap();
-    for e in window {
+
+    let mut capture_cursor = true;
+
+    window.set_capture_cursor(capture_cursor);
+
+    let get_projection = |w: &PistonWindow<(), Sdl2Window>| {
+        let draw_size = w.window.borrow().draw_size();
+        CameraPerspective {
+            fov: 90.0, near_clip: 0.1, far_clip: 1000.0,
+            aspect_ratio: (draw_size.width as f32) / (draw_size.height as f32)
+        }.projection()
+    };
+
+    let mut projection = get_projection(&window);
+    let mut first_person = FirstPerson::new(
+        [0.5, 0.5, 4.0],
+        FirstPersonSettings::keyboard_wasd()
+    );
+
+    let mut debug_renderer = {
+        let text_renderer = {
+            gfx_text::new(window.factory.borrow().clone()).unwrap()
+        };
+        DebugRenderer::new(window.factory.borrow().clone(),
+            text_renderer, 64).ok().unwrap()
+    };
+
+    for mut e in window {
+        if capture_cursor {
+            first_person.event(&e);
+        }
         e.draw_3d(|stream| {
-            stream.clear(
-                gfx::ClearData {
-                    color: [0.3, 0.3, 0.3, 1.0],
-                    depth: 1.0,
-                    stencil: 0,
-                }
+            let args = e.render_args().unwrap();
+            let mvp = model_view_projection(
+                Matrix::id(),
+                first_person.camera(args.ext_dt).orthogonal(),
+                projection
             );
+            render::clear(stream);
+            render::axes(&mut debug_renderer);
+            debug_renderer.render(stream, mvp).unwrap();
         });
+        e.resize(|_, _| {
+            projection = get_projection(&e);
+        });
+        if let Some(Button::Keyboard(Key::C)) = e.press_args() {
+            capture_cursor = !capture_cursor;
+            e.set_capture_cursor(capture_cursor);
+        }
     }
 }
 
