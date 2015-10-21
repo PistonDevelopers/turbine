@@ -10,6 +10,7 @@ extern crate sdl2_window;
 #[macro_use]
 extern crate gfx;
 extern crate gfx_device_gl;
+extern crate piston_meta;
 
 pub use math::Vec3;
 
@@ -102,5 +103,17 @@ pub fn start(_project_folder: &str) {
                 }
             );
         });
+    }
+}
+
+#[cfg(test)]
+pub mod tests {
+    use super::*;
+    use piston_meta::*;
+
+    #[test]
+    fn entity_syntax() {
+        let _ = load_syntax_data2("assets/entity/syntax.txt",
+            "assets/entity/test-cube.txt");
     }
 }
