@@ -14,12 +14,17 @@ extern crate piston_meta;
 extern crate camera_controllers;
 extern crate gfx_debug_draw;
 extern crate gfx_text;
+#[macro_use]
+extern crate log;
 
 pub use math::Vec3;
 pub use math::Mat4;
+pub use math::AABB;
+pub use math::Ray;
 
 pub mod math;
 pub mod render;
+pub mod logger;
 
 /// The maximum number of entities.
 pub const ENTITY_COUNT: usize = 10000;
@@ -27,8 +32,12 @@ pub const ENTITY_COUNT: usize = 10000;
 bitflags!(
     /// Used to turn on/off components per entity.
     flags Mask: u32 {
+        /// Entity is alive.
+        const ALIVE         = 0b00000001,
+        /// Entity is selected.
+        const SELECT        = 0b00000010,
         /// Entity has an AABB.
-        const AABB = 0b00000001,
+        const AABB          = 0b00000100,
     }
 );
 
@@ -50,14 +59,6 @@ impl Physics {
                 .sub(prev.position[i]);
         }
     }
-}
-
-/// An AABB rectangle.
-pub struct AABB {
-    /// The corner with lowest coordinates.
-    pub min: Vec3,
-    /// The corner with highest coordinates.
-    pub max: Vec3,
 }
 
 /// Stores the world data.
@@ -84,6 +85,38 @@ impl World {
         swap(&mut self.prev, &mut self.current);
         swap(&mut self.current, &mut self.next);
     }
+
+    /// Finds the first free entity slot.
+    pub fn find_free_entity_slot(&self) -> Option<usize> {
+        for i in 0..ENTITY_COUNT {
+            if self.mask[i].is_empty() { return Some(i); }
+        }
+        None
+    }
+
+    /// Sets position with no velocity.
+    pub fn set_position_with_no_velocity(&mut self, id: usize, pos: Vec3) {
+        self.prev.position[id] = pos;
+        self.current.position[id] = pos;
+        self.next.position[id] = pos;
+    }
+
+    /// Adds a new entity.
+    /// Marks the entity as alive and selects it.
+    pub fn add_entity(&mut self, pos: Vec3) {
+        let id = match self.find_free_entity_slot() {
+            Some(id) => id,
+            None => {
+                warn!("There are no free entity slots");
+                return;
+            }
+        };
+        self.init.position[id] = pos;
+        self.set_position_with_no_velocity(id, pos);
+        let mask = &mut self.mask[id];
+        mask.insert(ALIVE);
+        mask.insert(SELECT);
+    }
 }
 
 /// Starts Turbine pointing it to a project folder.
@@ -92,7 +125,7 @@ pub fn start(_project_folder: &str) {
     use sdl2_window::Sdl2Window;
     use camera_controllers::*;
     use gfx_debug_draw::DebugRenderer;
-    use math::Matrix;
+    use math::{ Matrix, Vector };
 
     println!("
 ~~~~~~~~   TURBINE   ~~~~~~~~\n\
@@ -107,6 +140,8 @@ Camera control: WASD\n\
         .samples(4)
         .build()
         .unwrap();
+
+    logger::init().unwrap();
 
     let mut capture_cursor = true;
 
@@ -134,6 +169,8 @@ Camera control: WASD\n\
             text_renderer, 64).ok().unwrap()
     };
 
+    let mut cursor_pos = [0.0, 0.0];
+
     for mut e in window {
         if capture_cursor {
             first_person.event(&e);
@@ -152,9 +189,33 @@ Camera control: WASD\n\
         e.resize(|_, _| {
             projection = get_projection(&e);
         });
+        if let Some(pos) = e.mouse_cursor_args() {
+            cursor_pos = pos;
+        }
         if let Some(Button::Keyboard(Key::C)) = e.press_args() {
             capture_cursor = !capture_cursor;
             e.set_capture_cursor(capture_cursor);
+        }
+        if let Some(Button::Mouse(MouseButton::Left)) = e.press_args() {
+            if !capture_cursor {
+                let draw_size = e.draw_size();
+                let draw_size = [draw_size.width, draw_size.height];
+                let cursor_pos = Vector::from_2d(cursor_pos, draw_size);
+                let ray = Ray { pos: cursor_pos, dir: Vector::forward() };
+                let mvp = model_view_projection(
+                    Matrix::id(),
+                    first_person.camera(0.0).orthogonal(),
+                    projection
+                );
+                let ray = mvp.inv().ray(ray);
+                match ray.ground_plane() {
+                    None => info!("Click on the ground to add entity"),
+                    Some(pos) => {
+                        println!("TEST add position {:?}", pos);
+                    }
+                }
+                // math::ray_hits_plane
+            }
         }
     }
 }
