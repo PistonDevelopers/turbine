@@ -9,6 +9,7 @@ pub type Mat4 = [[f32; 4]; 4];
 
 use vecmath::{ vec3_add, vec3_sub, vec3_scale, vec3_normalized };
 use vecmath::{ mat4_id, mat4_inv };
+use vecmath::col_mat4_transform;
 
 /// Helper methods for vectors.
 pub trait Vector {
@@ -95,6 +96,8 @@ pub trait Matrix {
     fn id() -> Self;
     /// Returns inverted matrix.
     fn inv(self) -> Self;
+    /// Transforms a vector in homogenous coordinates.
+    fn transform(self, vec: Vec4) -> Vec4;
     /// Transforms a ray through the matrix.
     fn ray(self, ray: Ray) -> Ray;
 }
@@ -107,14 +110,16 @@ impl Matrix for Mat4 {
     fn inv(self) -> Self { mat4_inv(self) }
 
     #[inline(always)]
-    fn ray(self, ray: Ray) -> Ray {
-        use vecmath::col_mat4_transform;
+    fn transform(self, pos: Vec4) -> Vec4 {
+        col_mat4_transform(self, pos)
+    }
 
+    #[inline(always)]
+    fn ray(self, ray: Ray) -> Ray {
         Ray {
-            pos: Vector::from_4d(
-                col_mat4_transform(self, ray.pos.point4())),
+            pos: Vector::from_4d(self.transform(ray.pos.point4())),
             dir: vec3_normalized(Vector::from_4d(
-                col_mat4_transform(self, ray.dir.vec4()))),
+                self.transform(ray.dir.vec4()))),
         }
     }
 }

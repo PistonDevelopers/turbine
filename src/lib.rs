@@ -170,6 +170,7 @@ Camera control: WASD\n\
     };
 
     let mut cursor_pos = [0.0, 0.0];
+    let mut ground_pos = [0.0, 0.0, 0.0];
 
     for mut e in window {
         if capture_cursor {
@@ -184,6 +185,7 @@ Camera control: WASD\n\
             );
             render::clear(stream);
             render::axes(&mut debug_renderer);
+            debug_renderer.draw_marker(ground_pos, 0.1, [1.0, 0.0, 0.0, 1.0]);
             debug_renderer.render(stream, mvp).unwrap();
         });
         e.resize(|_, _| {
@@ -191,12 +193,7 @@ Camera control: WASD\n\
         });
         if let Some(pos) = e.mouse_cursor_args() {
             cursor_pos = pos;
-        }
-        if let Some(Button::Keyboard(Key::C)) = e.press_args() {
-            capture_cursor = !capture_cursor;
-            e.set_capture_cursor(capture_cursor);
-        }
-        if let Some(Button::Mouse(MouseButton::Left)) = e.press_args() {
+
             if !capture_cursor {
                 let draw_size = e.draw_size();
                 let draw_size = [draw_size.width, draw_size.height];
@@ -211,11 +208,18 @@ Camera control: WASD\n\
                 match ray.ground_plane() {
                     None => info!("Click on the ground to add entity"),
                     Some(pos) => {
+                        ground_pos = pos;
                         println!("TEST add position {:?}", pos);
                     }
                 }
-                // math::ray_hits_plane
             }
+        }
+        if let Some(Button::Keyboard(Key::C)) = e.press_args() {
+            capture_cursor = !capture_cursor;
+            e.set_capture_cursor(capture_cursor);
+        }
+        if let Some(Button::Mouse(MouseButton::Left)) = e.press_args() {
+
         }
     }
 }
