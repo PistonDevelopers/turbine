@@ -153,7 +153,7 @@ Camera control: WASD\n\
     let get_projection = |w: &PistonWindow<(), Sdl2Window>| {
         let draw_size = w.window.borrow().draw_size();
         CameraPerspective {
-            fov: 90.0, near_clip: near, far_clip: far,
+            fov: fov, near_clip: near, far_clip: far,
             aspect_ratio: (draw_size.width as f32) / (draw_size.height as f32)
         }.projection()
     };
