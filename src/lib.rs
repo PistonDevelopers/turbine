@@ -147,10 +147,13 @@ Camera control: WASD\n\
 
     window.set_capture_cursor(capture_cursor);
 
+    let fov = 90.0;
+    let near = 0.1;
+    let far = 1000.0;
     let get_projection = |w: &PistonWindow<(), Sdl2Window>| {
         let draw_size = w.window.borrow().draw_size();
         CameraPerspective {
-            fov: 90.0, near_clip: 0.1, far_clip: 1000.0,
+            fov: 90.0, near_clip: near, far_clip: far,
             aspect_ratio: (draw_size.width as f32) / (draw_size.height as f32)
         }.projection()
     };
@@ -171,6 +174,7 @@ Camera control: WASD\n\
 
     let mut cursor_pos = [0.0, 0.0];
     let mut ground_pos = [0.0, 0.0, 0.0];
+    let mut ortho = false;
 
     for mut e in window {
         if capture_cursor {
@@ -184,42 +188,44 @@ Camera control: WASD\n\
                 projection
             );
             render::clear(stream);
+
             render::axes(&mut debug_renderer);
-            debug_renderer.draw_marker(ground_pos, 0.1, [1.0, 0.0, 0.0, 1.0]);
+            debug_renderer.draw_marker(ground_pos, 0.1, [1.0, 1.0, 0.0, 1.0]);
             debug_renderer.render(stream, mvp).unwrap();
         });
         e.resize(|_, _| {
-            projection = get_projection(&e);
+            if !ortho {
+                projection = get_projection(&e);
+            }
         });
         if let Some(pos) = e.mouse_cursor_args() {
             cursor_pos = pos;
-
-            if !capture_cursor {
-                let draw_size = e.draw_size();
-                let draw_size = [draw_size.width, draw_size.height];
-                let cursor_pos = Vector::from_2d(cursor_pos, draw_size);
-                let ray = Ray { pos: cursor_pos, dir: Vector::forward() };
-                let mvp = model_view_projection(
-                    Matrix::id(),
-                    first_person.camera(0.0).orthogonal(),
-                    projection
-                );
-                let ray = mvp.inv().ray(ray);
-                match ray.ground_plane() {
-                    None => info!("Click on the ground to add entity"),
-                    Some(pos) => {
-                        ground_pos = pos;
-                        println!("TEST add position {:?}", pos);
-                    }
-                }
-            }
         }
         if let Some(Button::Keyboard(Key::C)) = e.press_args() {
             capture_cursor = !capture_cursor;
             e.set_capture_cursor(capture_cursor);
         }
+        if let Some(Button::Keyboard(Key::O)) = e.press_args() {
+            ortho = !ortho;
+            if ortho {
+                projection = Matrix::id();
+            } else {
+                projection = get_projection(&e);
+            }
+        }
         if let Some(Button::Mouse(MouseButton::Left)) = e.press_args() {
-
+            if !capture_cursor {
+                let draw_size = e.draw_size();
+                let draw_size = [draw_size.width, draw_size.height];
+                let ray = Ray::from_2d(cursor_pos, draw_size, fov, near, far);
+                let view_to_world = first_person.camera(0.0).orthogonal().inv();
+                match view_to_world.ray(ray).ground_plane() {
+                    None => info!("Click on the ground to add entity"),
+                    Some(pos) => {
+                        ground_pos = pos;
+                    }
+                }
+            }
         }
     }
 }
