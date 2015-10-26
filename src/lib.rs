@@ -150,24 +150,22 @@ Camera control: WASD\n\
     let fov = 90.0;
     let near = 0.1;
     let far = 1000.0;
-    let get_projection = |w: &PistonWindow<(), Sdl2Window>| {
-        let draw_size = w.window.borrow().draw_size();
+    let get_projection = |draw_size: Size| {
         CameraPerspective {
             fov: fov, near_clip: near, far_clip: far,
             aspect_ratio: (draw_size.width as f32) / (draw_size.height as f32)
         }.projection()
     };
 
-    let mut projection = get_projection(&window);
+    let mut projection = get_projection(window.draw_size());
     let mut first_person = FirstPerson::new(
         [0.5, 0.5, 4.0],
         FirstPersonSettings::keyboard_wasd()
     );
 
     let mut debug_renderer = {
-        let text_renderer = {
-            gfx_text::new(window.factory.borrow().clone()).unwrap()
-        };
+        let text_renderer =
+            gfx_text::new(window.factory.borrow().clone()).unwrap();
         DebugRenderer::new(window.factory.borrow().clone(),
             text_renderer, 64).ok().unwrap()
     };
@@ -195,7 +193,7 @@ Camera control: WASD\n\
         });
         e.resize(|_, _| {
             if !ortho {
-                projection = get_projection(&e);
+                projection = get_projection(e.draw_size());
             }
         });
         if let Some(pos) = e.mouse_cursor_args() {
@@ -210,7 +208,7 @@ Camera control: WASD\n\
             if ortho {
                 projection = Matrix::id();
             } else {
-                projection = get_projection(&e);
+                projection = get_projection(e.draw_size());
             }
         }
         if let Some(Button::Mouse(MouseButton::Left)) = e.press_args() {
