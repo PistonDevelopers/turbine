@@ -8,15 +8,15 @@ pub type Vec4 = [f32; 4];
 pub type Mat4 = [[f32; 4]; 4];
 
 use vecmath::{ vec3_add, vec3_sub, vec3_scale, vec3_normalized };
-use vecmath::{ mat4_id, mat4_inv };
-use vecmath::col_mat4_transform;
+use vecmath::{ mat4_id, mat4_inv, mat4_transposed };
+use vecmath::{ col_mat4_transform, col_mat4_mul };
 
 /// Helper methods for vectors.
 pub trait Vector {
     /// Returns a vector with zero length.
     fn zero() -> Self;
     /// Returns a vector in the forward direction.
-    fn forward() -> Self;
+    fn eye_forward() -> Self;
     /// Creates vector from 2D position.
     /// Returns a vector in normalized coordinates.
     fn from_2d(pos: [f64; 2], window_size: [u32; 2]) -> Self;
@@ -44,7 +44,7 @@ impl Vector for Vec3 {
     fn zero() -> Self { [0.0, 0.0, 0.0] }
 
     #[inline(always)]
-    fn forward() -> Self { [0.0, 0.0, 1.0] }
+    fn eye_forward() -> Self { [0.0, 0.0, 1.0] }
 
     #[inline(always)]
     fn from_2d(pos: [f64; 2], window_size: [u32; 2]) -> Self {
@@ -94,10 +94,18 @@ impl Vector for Vec3 {
 pub trait Matrix {
     /// Returns identity matrix.
     fn id() -> Self;
+    /// Returns transposed matrix, switching rows and columns.
+    fn transposed(self) -> Self;
     /// Returns inverted matrix.
     fn inv(self) -> Self;
+    /// Multiply with another matrix.
+    fn mul(self, rhs: Self) -> Self;
     /// Transforms a vector in homogenous coordinates.
     fn transform(self, vec: Vec4) -> Vec4;
+    /// Transform a point.
+    fn pos(self, pos: Vec3) -> Vec3;
+    /// Transform a vector.
+    fn vec(self, vec: Vec3) -> Vec3;
     /// Transforms a ray through the matrix.
     fn ray(self, ray: Ray) -> Ray;
 }
@@ -107,7 +115,21 @@ impl Matrix for Mat4 {
     fn id() -> Self { mat4_id() }
 
     #[inline(always)]
-    fn inv(self) -> Self { mat4_inv(self) }
+    fn transposed(self) -> Self { mat4_transposed(self) }
+
+    #[inline(always)]
+    // fn inv(self) -> Self { mat4_inv(self) }
+    fn inv(self) -> Self {
+        use vecmath::{ mat4_cast, Matrix4 };
+
+        let m: Matrix4<f64> = mat4_cast(self);
+        mat4_cast(mat4_inv(m))
+    }
+
+    #[inline(always)]
+    fn mul(self, rhs: Self) -> Self {
+        col_mat4_mul(self, rhs)
+    }
 
     #[inline(always)]
     fn transform(self, pos: Vec4) -> Vec4 {
@@ -115,11 +137,20 @@ impl Matrix for Mat4 {
     }
 
     #[inline(always)]
+    fn pos(self, pos: Vec3) -> Vec3 {
+        Vector::from_4d(self.transform(pos.point4()))
+    }
+
+    #[inline(always)]
+    fn vec(self, vec: Vec3) -> Vec3 {
+        Vector::from_4d(self.transform(vec.vec4()))
+    }
+
+    #[inline(always)]
     fn ray(self, ray: Ray) -> Ray {
         Ray {
-            pos: Vector::from_4d(self.transform(ray.pos.point4())),
-            dir: vec3_normalized(Vector::from_4d(
-                self.transform(ray.dir.vec4()))),
+            pos: self.pos(ray.pos),
+            dir: self.vec(ray.dir).normalized(),
         }
     }
 }
@@ -143,9 +174,26 @@ pub struct Ray {
 }
 
 impl Ray {
+    /// Creates a ray in view coordinates.
+    pub fn from_2d(
+        pos: [f64; 2],
+        draw_size: [u32; 2],
+        fov: f32,
+        near_clip: f32,
+        far_clip: f32
+    ) -> Ray {
+        let pos: Vec3 = Vector::from_2d(pos, draw_size);
+        let aspect_ratio = (draw_size[1] as f32) / (draw_size[0] as f32);
+        let f = (fov * ::std::f32::consts::PI / 360.0).tan();
+        let dx = pos[0] * f / aspect_ratio;
+        let dy = pos[1] * f;
+        let ray_near = [dx * near_clip, dy * near_clip, -near_clip];
+        let ray_far = [dx * far_clip, dy * far_clip, -far_clip];
+        Ray { pos: ray_near, dir: ray_far.sub(ray_near).normalized() }
+    }
+
     /// Returns position in ground plane.
     /// Returns `None` if looking up above the ground.
-    /// Returns `None` if looking down below the ground.
     /// Returns `None` if ground intersects the start position.
     pub fn ground_plane(&self) -> Option<Vec3> {
         let dy = self.dir[1];
