@@ -179,6 +179,8 @@ Camera control: WASD\n\
             first_person.event(&e);
         }
         e.draw_3d(|stream| {
+            let draw_size = e.draw_size();
+            let draw_size = [draw_size.width, draw_size.height];
             let args = e.render_args().unwrap();
             let camera = first_person.camera(args.ext_dt);
             let mvp = model_view_projection(
@@ -188,7 +190,7 @@ Camera control: WASD\n\
             );
             render::clear(stream);
 
-            render::axes(&camera, &mut debug_renderer);
+            render::axes(&camera, projection, draw_size, &mut debug_renderer);
             debug_renderer.draw_marker(ground_pos, 0.1, [1.0, 1.0, 0.0, 1.0]);
             debug_renderer.render(stream, mvp).unwrap();
         });
