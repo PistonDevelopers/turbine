@@ -7,7 +7,7 @@ pub type Vec4 = [f32; 4];
 /// Matrix type.
 pub type Mat4 = [[f32; 4]; 4];
 
-use vecmath::{ vec3_add, vec3_sub, vec3_scale, vec3_normalized };
+use vecmath::{ vec3_add, vec3_sub, vec3_dot, vec3_scale, vec3_normalized };
 use vecmath::{ mat4_id, mat4_inv, mat4_transposed };
 use vecmath::{ col_mat4_transform, col_mat4_mul };
 
@@ -29,6 +29,8 @@ pub trait Vector {
     fn sub(self, rhs: Self) -> Self;
     /// Scales a vector.
     fn scale(self, f: f32) -> Self;
+    /// Returns dot product of two vectors.
+    fn dot(self, rhs: Vec3) -> f32;
     /// Returns the normalized vector.
     fn normalized(self) -> Self;
     /// Creates a homogeneous point.
@@ -67,6 +69,11 @@ impl Vector for Vec3 {
     #[inline(always)]
     fn sub(self, rhs: Self) -> Self {
         vec3_sub(self, rhs)
+    }
+
+    #[inline(always)]
+    fn dot(self, rhs: Self) -> f32 {
+        vec3_dot(self, rhs)
     }
 
     #[inline(always)]
@@ -205,4 +212,14 @@ impl Ray {
             else { Some(self.pos.add(self.dir.scale(k))) }
         }
     }
+}
+
+/// Returns true when camera is looking in direction of a point.
+pub fn is_looking_in_direction_of(
+    camera_pos: Vec3,
+    camera_forward: Vec3,
+    point: Vec3
+) -> bool {
+    let d = point.sub(camera_pos);
+    d.dot(camera_forward) < 0.0
 }

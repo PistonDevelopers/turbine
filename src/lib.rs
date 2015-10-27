@@ -180,14 +180,15 @@ Camera control: WASD\n\
         }
         e.draw_3d(|stream| {
             let args = e.render_args().unwrap();
+            let camera = first_person.camera(args.ext_dt);
             let mvp = model_view_projection(
                 Matrix::id(),
-                first_person.camera(args.ext_dt).orthogonal(),
+                camera.orthogonal(),
                 projection
             );
             render::clear(stream);
 
-            render::axes(&mut debug_renderer);
+            render::axes(&camera, &mut debug_renderer);
             debug_renderer.draw_marker(ground_pos, 0.1, [1.0, 1.0, 0.0, 1.0]);
             debug_renderer.render(stream, mvp).unwrap();
         });
