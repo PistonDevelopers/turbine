@@ -84,6 +84,8 @@ Camera control: WASD\n\
     let mut ground_pos = [0.0, 0.0, 0.0];
     let mut ortho = false;
 
+    let mut world = World::new();
+
     for mut e in window {
         if capture_cursor {
             first_person.event(&e);
@@ -134,6 +136,7 @@ Camera control: WASD\n\
                     None => info!("Click on the ground to add entity"),
                     Some(pos) => {
                         ground_pos = pos;
+                        world.add_entity(pos);
                     }
                 }
             }

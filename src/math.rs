@@ -192,6 +192,16 @@ pub struct AABB {
     pub max: Vec3,
 }
 
+impl AABB {
+    /// Returns empty AABB.
+    pub fn empty() -> AABB {
+        AABB {
+            min: [0.0; 3],
+            max: [0.0; 3]
+        }
+    }
+}
+
 /// A ray.
 #[derive(Debug, Copy, Clone)]
 pub struct Ray {

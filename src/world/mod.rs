@@ -21,10 +21,17 @@ bitflags!(
 /// Stores physical state.
 pub struct Physics {
     /// The position.
-    pub position: [Vec3; ENTITY_COUNT],
+    pub position: Vec<Vec3>,
 }
 
 impl Physics {
+    /// Returns new `Physics`.
+    pub fn new() -> Physics {
+        Physics {
+            position: vec![[0.0; 3]; ENTITY_COUNT],
+        }
+    }
+
     /// Gets next linear step.
     pub fn step(&mut self, prev: &Physics, current: &Physics) {
         use math::Vector;
@@ -41,20 +48,32 @@ impl Physics {
 /// Stores the world data.
 pub struct World {
     /// The active components per entity.
-    pub mask: [Mask; ENTITY_COUNT],
+    pub mask: Vec<Mask>,
     /// The initial state of physics.
-    pub init: Box<Physics>,
+    pub init: Physics,
     /// The previous state.
-    pub prev: Box<Physics>,
+    pub prev: Physics,
     /// The current state.
-    pub current: Box<Physics>,
+    pub current: Physics,
     /// The next state.
-    pub next: Box<Physics>,
+    pub next: Physics,
     /// An AABB relative to position.
-    pub aabb: [AABB; ENTITY_COUNT],
+    pub aabb: Vec<AABB>,
 }
 
 impl World {
+    /// Returns a new `World`.
+    pub fn new() -> World {
+        World {
+            mask: vec![Mask::empty(); ENTITY_COUNT],
+            init: Physics::new(),
+            prev: Physics::new(),
+            current: Physics::new(),
+            next: Physics::new(),
+            aabb: vec![AABB::empty(); ENTITY_COUNT]
+        }
+    }
+
     /// Swaps the physical state such that previous is now next.
     pub fn swap_physics(&mut self) {
         use std::mem::swap;
@@ -93,5 +112,6 @@ impl World {
         let mask = &mut self.mask[id];
         mask.insert(ALIVE);
         mask.insert(SELECT);
+        info!("Added entity id {}", id);
     }
 }
