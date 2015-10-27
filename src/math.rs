@@ -39,6 +39,8 @@ pub trait Vector {
     /// Create a homogeneous vector.
     /// Puts 0.0 in the w component.
     fn vec4(self) -> Vec4;
+    /// Cast to [i32; 2].
+    fn i32x2(self) -> [i32; 2];
 }
 
 impl Vector for Vec3 {
@@ -95,6 +97,11 @@ impl Vector for Vec3 {
     fn vec4(self) -> Vec4 {
         [self[0], self[1], self[2], 0.0]
     }
+
+    #[inline(always)]
+    fn i32x2(self) -> [i32; 2] {
+        [self[0] as i32, self[1] as i32]
+    }
 }
 
 /// Helper methods for matrices.
@@ -115,6 +122,9 @@ pub trait Matrix {
     fn vec(self, vec: Vec3) -> Vec3;
     /// Transforms a ray through the matrix.
     fn ray(self, ray: Ray) -> Ray;
+    /// Transforms a 3D point to frame buffer coordinates.
+    /// Assumes that the matrix is model-view-projection.
+    fn pos_to_frame_buffer(self, pos: Vec3, draw_size: [u32; 2]) -> Vec3;
 }
 
 impl Matrix for Mat4 {
@@ -159,6 +169,17 @@ impl Matrix for Mat4 {
             pos: self.pos(ray.pos),
             dir: self.vec(ray.dir).normalized(),
         }
+    }
+
+    #[inline(always)]
+    fn pos_to_frame_buffer(self, pos: Vec3, draw_size: [u32; 2]) -> Vec3 {
+        let pos = self.transform(pos.point4());
+        [
+            (pos[0] / pos[3] + 1.0) / 2.0 * draw_size[0] as f32,
+            (draw_size[1] as f32 -
+                (pos[1] / pos[3] + 1.0) / 2.0 * draw_size[1] as f32),
+            0.0
+        ]
     }
 }
 
