@@ -102,8 +102,11 @@ Camera control: WASD\n\
             );
             render::clear(stream);
 
+            render::entity_current_positions(&world, &mut debug_renderer);
+
             render::axes(&camera, projection, draw_size, &mut debug_renderer);
-            debug_renderer.draw_marker(ground_pos, 0.1, [1.0, 1.0, 0.0, 1.0]);
+            let yellow = [1.0, 1.0, 0.0, 1.0];
+            debug_renderer.draw_marker(ground_pos, 0.1, yellow);
             debug_renderer.render(stream, mvp).unwrap();
         });
         e.resize(|_, _| {
