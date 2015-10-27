@@ -2,6 +2,7 @@
 
 use self::types::Stream;
 use self::types::DebugRenderer;
+use camera_controllers::Camera;
 
 pub mod types;
 
@@ -20,7 +21,9 @@ pub fn clear(stream: &mut Stream) {
 }
 
 /// Draws axes.
-pub fn axes(debug_renderer: &mut DebugRenderer) {
+pub fn axes(camera: &Camera, debug_renderer: &mut DebugRenderer) {
+    use math::is_looking_in_direction_of;
+
     let red = [1.0, 0.0, 0.0, 1.0];
     let green = [0.0, 1.0, 0.0, 1.0];
     let blue = [0.0, 0.0, 1.0, 1.0];
@@ -31,7 +34,13 @@ pub fn axes(debug_renderer: &mut DebugRenderer) {
     debug_renderer.draw_line(origo, x, red);
     debug_renderer.draw_line(origo, y, green);
     debug_renderer.draw_line(origo, z, blue);
-    debug_renderer.draw_text_at_position("X", x, red);
-    debug_renderer.draw_text_at_position("Y", y, green);
-    debug_renderer.draw_text_at_position("Z", z, blue);
+    if is_looking_in_direction_of(camera.position, camera.forward, x) {
+        debug_renderer.draw_text_at_position("X", x, red);
+    }
+    if is_looking_in_direction_of(camera.position, camera.forward, y) {
+        debug_renderer.draw_text_at_position("Y", y, green);
+    }
+    if is_looking_in_direction_of(camera.position, camera.forward, z) {
+        debug_renderer.draw_text_at_position("Z", z, blue);
+    }
 }
