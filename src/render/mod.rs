@@ -5,6 +5,7 @@ use self::types::DebugRenderer;
 use camera_controllers::Camera;
 
 use math::Mat4;
+use world::World;
 
 pub mod types;
 
@@ -61,5 +62,20 @@ pub fn axes(
     if is_looking_in_direction_of(camera.position, camera.forward, z) {
         let z = mvp.pos_to_frame_buffer(z, draw_size).i32x2();
         debug_renderer.draw_text_on_screen("Z", z, blue);
+    }
+}
+
+/// Renders the current positions of entities.
+pub fn entity_current_positions(
+    world: &World,
+    debug_renderer: &mut DebugRenderer
+) {
+    use world::*;
+
+    let turqouise = [0.0, 1.0, 1.0, 1.0];
+    for i in 0..ENTITY_COUNT {
+        if world.mask[i].contains(ALIVE) {
+            debug_renderer.draw_marker(world.current.position[i], 0.1, turqouise);
+        }
     }
 }
