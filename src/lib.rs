@@ -28,9 +28,10 @@ pub mod math;
 pub mod render;
 pub mod logger;
 pub mod world;
+pub mod data;
 
 /// Starts Turbine pointing it to a project folder.
-pub fn start(_project_folder: &str) {
+pub fn start(project_folder: &str) {
     use piston_window::*;
     use sdl2_window::Sdl2Window;
     use camera_controllers::*;
@@ -85,6 +86,14 @@ Camera control: WASD\n\
     let mut ortho = false;
 
     let mut world = World::new();
+
+    {
+        // Load entities.
+        let files = data::entities::files(project_folder).unwrap();
+        for f in &files {
+            info!("Entity {}", f.file_name().unwrap().to_str().unwrap());
+        }
+    }
 
     for mut e in window {
         if capture_cursor {
