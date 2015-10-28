@@ -93,9 +93,7 @@ Camera control: WASD\n\
 
         // Load entities.
         let files = data::entities::files(project_folder).unwrap();
-        for f in &files {
-            info!("Entity {}", f.file_name().unwrap().to_str().unwrap());
-        }
+        data::entities::load(&mut world, &files).unwrap();
     }
 
     for mut e in window {
@@ -166,7 +164,7 @@ pub mod tests {
 
     #[test]
     fn entity_syntax() {
-        let _ = load_syntax_data2("assets/entity/syntax.txt",
+        let _ = load_syntax_data("assets/entity/syntax.txt",
             "assets/entity/test-cube.txt");
     }
 }

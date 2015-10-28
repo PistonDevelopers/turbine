@@ -1,5 +1,7 @@
 //! World ECS structure.
 
+use std::sync::Arc;
+
 use math::Vec3;
 use math::AABB;
 
@@ -59,6 +61,9 @@ pub struct World {
     pub next: Physics,
     /// An AABB relative to position.
     pub aabb: Vec<AABB>,
+    /// An optional name describing the entity.
+    /// Multiple entities can share the same name.
+    pub name: Vec<Option<Arc<String>>>,
 }
 
 impl World {
@@ -70,7 +75,8 @@ impl World {
             prev: Physics::new(),
             current: Physics::new(),
             next: Physics::new(),
-            aabb: vec![AABB::empty(); ENTITY_COUNT]
+            aabb: vec![AABB::empty(); ENTITY_COUNT],
+            name: vec![None; ENTITY_COUNT],
         }
     }
 
