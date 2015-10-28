@@ -88,6 +88,9 @@ Camera control: WASD\n\
     let mut world = World::new();
 
     {
+        // Create folders if they do not exists.
+        data::create_folders(project_folder).unwrap();
+
         // Load entities.
         let files = data::entities::files(project_folder).unwrap();
         for f in &files {

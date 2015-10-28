@@ -1,25 +1,24 @@
 //! Data.
 
-/// Read and write entities.
-pub mod entities {
-    use std::io;
+use std::io;
+
+pub mod entities;
+
+/// Creates folders within project folders, such as entities folder.
+pub fn create_folders(project_folder: &str) -> io::Result<()> {
     use std::path::PathBuf;
-    use world;
+    use std::fs::create_dir;
 
-    /// Gets a list of all entity files.
-    pub fn files(project_folder: &str) -> io::Result<Vec<PathBuf>> {
-        use std::fs::read_dir;
-
-        let mut result = Vec::with_capacity(world::ENTITY_COUNT);
-        let project_folder: PathBuf = PathBuf::from(project_folder);
-        let entities_folder = project_folder.join("entities");
-        for entry in try!(read_dir(entities_folder)) {
-            let entry = try!(entry);
-            let metadata = try!(entry.metadata());
-            if metadata.is_file() {
-                result.push(entry.path());
-            }
-        }
-        Ok(result)
+    let project_folder: PathBuf = PathBuf::from(project_folder);
+    if !project_folder.exists() {
+        try!(create_dir(&project_folder));
+        info!("Created project folder");
     }
+    let entities_folder = project_folder.join(entities::FOLDER);
+    if !entities_folder.exists() {
+        try!(create_dir(&entities_folder));
+        info!("Created entities folder");
+    }
+
+    Ok(())
 }
