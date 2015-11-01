@@ -1,15 +1,10 @@
 _seps: ""
 1 header = [.._seps!:"name" .w? .$:"entity_id"]
-2 position = ["position" .w? .$_:"x" .w? .$_:"y" .w? .$_:"z"]
-3 aabb = ["aabb" .w?
-    "min" .w?
-        .$_:"min_x" .w?
-        .$_:"min_y" .w?
-        .$_:"min_z" .w?
-    "max" .w?
-        .$_:"max_x" .w?
-        .$_:"max_y" .w?
-        .$_:"max_z"
+2 vec3 = [.$_:"x" .w? .$_:"y" .w? .$_:"z"]
+3 position = ["position" .w? vec3 .w?]
+4 aabb = ["aabb" .w?
+    "min" .w? vec3:"min" .w?
+    "max" .w? vec3:"max" .w?
 ]
 0 document = [
     header:"header" .w?

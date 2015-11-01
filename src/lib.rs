@@ -16,6 +16,7 @@ extern crate gfx_debug_draw;
 extern crate gfx_text;
 #[macro_use]
 extern crate log;
+extern crate range;
 
 pub use math::Vec3;
 pub use math::Mat4;
