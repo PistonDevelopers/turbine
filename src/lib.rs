@@ -17,6 +17,9 @@ extern crate gfx_text;
 #[macro_use]
 extern crate log;
 extern crate range;
+#[macro_use]
+extern crate conrod;
+extern crate find_folder;
 
 pub use math::Vec3;
 pub use math::Mat4;
@@ -36,6 +39,7 @@ pub fn start(project_folder: &str) {
     use piston_window::*;
     use sdl2_window::Sdl2Window;
     use camera_controllers::*;
+    use conrod::{ Ui, Theme };
     use gfx_debug_draw::DebugRenderer;
     use math::{ Matrix, Vector };
 
@@ -86,6 +90,16 @@ Camera control: WASD\n\
     let mut ground_pos = [0.0, 0.0, 0.0];
     let mut ortho = false;
 
+    let mut ui = {
+        let assets = find_folder::Search::ParentsThenKids(3, 3)
+            .for_folder("assets").unwrap();
+        let font_path = assets.join("fonts/NotoSans/NotoSans-Regular.ttf");
+        let mut theme = Theme::default();
+        theme.font_size_medium = 12;
+        let glyph_cache = Glyphs::new(&font_path, window.factory.borrow().clone());
+        Ui::new(glyph_cache.unwrap(), theme)
+    };
+
     let mut world = World::new();
 
     {
@@ -120,6 +134,24 @@ Camera control: WASD\n\
             debug_renderer.draw_marker(ground_pos, 0.1, yellow);
             debug_renderer.render(stream, mvp).unwrap();
         });
+        if !capture_cursor {
+            ui.handle_event(&e);
+            e.draw_2d(|c, g| {
+                use conrod::*;
+
+                widget_ids!(REFRESH);
+
+                Button::new()
+                    .color(color::blue())
+                    .top_left()
+                    .dimensions(60.0, 30.0)
+                    .label("refresh")
+                    .react(|| {})
+                    .set(REFRESH, &mut ui);
+
+                ui.draw(c, g);
+            });
+        }
         e.resize(|_, _| {
             if !ortho {
                 projection = get_projection(e.draw_size());
