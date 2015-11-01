@@ -156,6 +156,12 @@ Camera control: WASD\n\
             }
         }
     }
+
+    {
+        // Save entities data.
+        let entities_folder = data::entities::folder(project_folder);
+        data::entities::save(&mut world, entities_folder).unwrap();
+    }
 }
 
 #[cfg(test)]
