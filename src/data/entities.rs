@@ -1,8 +1,8 @@
 //! Read and write entities.
 
 use std::io;
-use std::path::PathBuf;
-use world::{ ENTITY_COUNT, World };
+use std::path::{ Path, PathBuf };
+use world::{ self, ENTITY_COUNT, World };
 
 /// The name of entity folder.
 pub const FOLDER: &'static str = "entities";
@@ -16,12 +16,22 @@ pub fn files(project_folder: &str) -> io::Result<Vec<PathBuf>> {
     let entities_folder = project_folder.join(FOLDER);
     for entry in try!(read_dir(entities_folder)) {
         let entry = try!(entry);
+        // Ignore files that starts with ".".
+        if let Some(file_name) = entry.file_name().to_str() {
+            if file_name.starts_with(".") { continue; }
+        }
         let metadata = try!(entry.metadata());
         if metadata.is_file() {
             result.push(entry.path());
         }
     }
     Ok(result)
+}
+
+/// Get entities folder.
+pub fn folder(project_folder: &str) -> PathBuf {
+    let project_folder: PathBuf = PathBuf::from(project_folder);
+    project_folder.join(FOLDER)
 }
 
 /// Loads entities from files.
@@ -172,9 +182,57 @@ pub fn load(w: &mut World, files: &[PathBuf]) -> Result<(), io::Error> {
         }
         if let Some(aabb) = aabb {
             w.aabb[id] = aabb;
+            w.mask[id].insert(world::AABB);
         }
 
         info!("Loaded entity {}", f.file_name().unwrap().to_str().unwrap());
+    }
+    Ok(())
+}
+
+/// Saves entities data.
+pub fn save<P: AsRef<Path>>(w: &World, entities_folder: P) -> Result<(), io::Error> {
+    use std::fs::File;
+    use std::io::Write;
+    use world::ALIVE;
+
+    let entities_folder = entities_folder.as_ref();
+    for id in 0..ENTITY_COUNT {
+        if !w.mask[id].contains(ALIVE) { continue; }
+
+        let f = entities_folder.join(format!("{}.txt", id));
+        let ref mut file = try!(File::create(f));
+
+        // Header
+        if let Some(ref name) = w.name[id] {
+            try!(writeln!(file, "{}", name));
+        } else {
+            try!(writeln!(file, "<name>"));
+        }
+        try!(writeln!(file, "{}", id));
+
+        // Position.
+        try!(writeln!(file, "position"));
+        let pos = w.init.position[id];
+        for i in 0..3 {
+            try!(writeln!(file, "\t{}", pos[i]));
+        }
+
+        // AABB.
+        if w.mask[id].contains(world::AABB) {
+            let aabb = w.aabb[id];
+            try!(writeln!(file, "aabb"));
+            try!(writeln!(file, "  min"));
+            for i in 0..3 {
+                try!(writeln!(file, "    {}", aabb.min[i]));
+            }
+            try!(writeln!(file, "  max"));
+            for i in 0..3 {
+                try!(writeln!(file, "    {}", aabb.max[i]));
+            }
+        }
+
+        info!("Saved entity id {}", id);
     }
     Ok(())
 }

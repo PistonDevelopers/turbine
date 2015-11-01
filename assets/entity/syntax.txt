@@ -1,5 +1,5 @@
 _seps: ""
-1 header = [.._seps!:"name" .w? .$:"entity_id"]
+1 header = [{"<name>" .._seps!:"name"} .w? .$:"entity_id"]
 2 vec3 = [.$_:"x" .w? .$_:"y" .w? .$_:"z"]
 3 position = ["position" .w? vec3 .w?]
 4 aabb = ["aabb" .w?
