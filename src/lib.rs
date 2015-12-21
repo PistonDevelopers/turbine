@@ -111,6 +111,8 @@ Camera control: WASD\n\
         data::entities::load(&mut world, &files).unwrap();
     }
 
+    widget_ids!(REFRESH);
+    
     for mut e in window {
         if capture_cursor {
             first_person.event(&e);
@@ -135,20 +137,19 @@ Camera control: WASD\n\
             debug_renderer.render(stream, mvp).unwrap();
         });
         if !capture_cursor {
+            use conrod::*;
+            
             ui.handle_event(&e);
-            e.draw_2d(|c, g| {
-                use conrod::*;
-
-                widget_ids!(REFRESH);
-
+            e.update(|_| ui.set_widgets(|ui| {
                 Button::new()
                     .color(color::blue())
                     .top_left()
-                    .dimensions(60.0, 30.0)
+                    .w_h(60.0, 30.0)
                     .label("refresh")
                     .react(|| {})
-                    .set(REFRESH, &mut ui);
-
+                    .set(REFRESH, ui);
+            }));
+            e.draw_2d(|c, g| {
                 ui.draw(c, g);
             });
         }
