@@ -112,7 +112,7 @@ Camera control: WASD\n\
     }
 
     widget_ids!(REFRESH);
-    
+
     for mut e in window {
         if capture_cursor {
             first_person.event(&e);
@@ -136,9 +136,14 @@ Camera control: WASD\n\
             debug_renderer.draw_marker(ground_pos, 0.1, yellow);
             debug_renderer.render(stream, mvp).unwrap();
         });
-        if !capture_cursor {
+        if capture_cursor {
+            // Send render events to make Conrod update window size.
+            if e.render_args().is_some() {
+                ui.handle_event(&e);
+            }
+        } else {
             use conrod::*;
-            
+
             ui.handle_event(&e);
             e.update(|_| ui.set_widgets(|ui| {
                 Button::new()
