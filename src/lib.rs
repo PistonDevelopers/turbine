@@ -147,7 +147,7 @@ Camera control: WASD\n\
             ui.handle_event(&e);
             e.update(|_| ui.set_widgets(|ui| {
                 Button::new()
-                    .color(color::blue())
+                    .color(color::BLUE)
                     .top_left()
                     .w_h(60.0, 30.0)
                     .label("refresh")
