@@ -1,6 +1,5 @@
 //! Rendering.
 
-use self::types::Stream;
 use self::types::DebugRenderer;
 use camera_controllers::Camera;
 
@@ -8,20 +7,6 @@ use math::Mat4;
 use world::World;
 
 pub mod types;
-
-/// Clears the screen.
-pub fn clear(stream: &mut Stream) {
-    use gfx::ClearData;
-    use gfx::traits::*;
-
-    stream.clear(
-        ClearData {
-            color: [0.3, 0.3, 0.3, 1.0],
-            depth: 1.0,
-            stencil: 0,
-        }
-    );
-}
 
 /// Draws axes.
 pub fn axes(
@@ -74,7 +59,7 @@ pub fn entity_current_positions(
 
     let turqouise = [0.0, 1.0, 1.0, 1.0];
     for i in 0..ENTITY_COUNT {
-        if world.mask[i].contains(ALIVE) {
+        if world.mask[i].contains(Mask::ALIVE) {
             debug_renderer.draw_marker(world.current.position[i], 0.1, turqouise);
         }
     }

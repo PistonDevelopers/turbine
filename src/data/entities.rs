@@ -43,7 +43,7 @@ pub fn load(w: &mut World, files: &[PathBuf]) -> Result<(), io::Error> {
     use piston_meta::*;
     use range::Range;
     use math::{ AABB, Vec3 };
-    use world::ALIVE;
+    use world::Mask;
 
     fn read_header(mut convert: Convert)
     -> Result<(Range, (Option<Arc<String>>, usize)), ()> {
@@ -172,7 +172,7 @@ pub fn load(w: &mut World, files: &[PathBuf]) -> Result<(), io::Error> {
             None => { panic!("header is missing in file `{}`", f.to_str().unwrap()); }
             Some(x) => x
         };
-        w.mask[id].insert(ALIVE);
+        w.mask[id].insert(Mask::ALIVE);
         w.name[id] = name;
         if let Some(pos) = position {
             w.init.position[id] = pos;
@@ -182,7 +182,7 @@ pub fn load(w: &mut World, files: &[PathBuf]) -> Result<(), io::Error> {
         }
         if let Some(aabb) = aabb {
             w.aabb[id] = aabb;
-            w.mask[id].insert(world::AABB);
+            w.mask[id].insert(world::Mask::AABB);
         }
 
         info!("Loaded entity {}", f.file_name().unwrap().to_str().unwrap());
@@ -194,11 +194,11 @@ pub fn load(w: &mut World, files: &[PathBuf]) -> Result<(), io::Error> {
 pub fn save<P: AsRef<Path>>(w: &World, entities_folder: P) -> Result<(), io::Error> {
     use std::fs::File;
     use std::io::Write;
-    use world::ALIVE;
+    use world::Mask;
 
     let entities_folder = entities_folder.as_ref();
     for id in 0..ENTITY_COUNT {
-        if !w.mask[id].contains(ALIVE) { continue; }
+        if !w.mask[id].contains(Mask::ALIVE) { continue; }
 
         let f = entities_folder.join(format!("{}.txt", id));
         let ref mut file = try!(File::create(f));
@@ -219,7 +219,7 @@ pub fn save<P: AsRef<Path>>(w: &World, entities_folder: P) -> Result<(), io::Err
         }
 
         // AABB.
-        if w.mask[id].contains(world::AABB) {
+        if w.mask[id].contains(world::Mask::AABB) {
             let aabb = w.aabb[id];
             try!(writeln!(file, "aabb"));
             try!(writeln!(file, "  min"));

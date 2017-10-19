@@ -1,12 +1,7 @@
 //! Types.
 
-use gfx;
 use gfx_device_gl;
 use gfx_debug_draw;
-
-/// The type of Gfx stream.
-pub type Stream =
-    gfx::OwnedStream<gfx_device_gl::Device, gfx_device_gl::Output>;
 
 /// The type of debug renderer.
 pub type DebugRenderer =
