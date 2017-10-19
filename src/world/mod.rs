@@ -10,13 +10,13 @@ pub const ENTITY_COUNT: usize = 10000;
 
 bitflags!(
     /// Used to turn on/off components per entity.
-    flags Mask: u32 {
+    pub struct Mask: u32 {
         /// Entity is alive.
-        const ALIVE         = 0b00000001,
+        const ALIVE         = 0b00000001;
         /// Entity is selected.
-        const SELECT        = 0b00000010,
+        const SELECT        = 0b00000010;
         /// Entity has an AABB.
-        const AABB          = 0b00000100,
+        const AABB          = 0b00000100;
     }
 );
 
@@ -116,8 +116,8 @@ impl World {
         self.init.position[id] = pos;
         self.set_position_with_no_velocity(id, pos);
         let mask = &mut self.mask[id];
-        mask.insert(ALIVE);
-        mask.insert(SELECT);
+        mask.insert(Mask::ALIVE);
+        mask.insert(Mask::SELECT);
         info!("Added entity id {}", id);
     }
 }
