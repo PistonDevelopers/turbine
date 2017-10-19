@@ -1,0 +1,16 @@
+[package]
+name = "turbine_reactive"
+version = "0.1.0"
+authors = ["Sven Nilsen <bvssvni@gmail.com>"]
+description = "Design, Animate and Program Geometry"
+readme = "README.md"
+license = "MIT"
+keywords = ["turbine", "reactive", "functional", "dynamic", "piston"]
+repository = "https://github.com/PistonDevelopers/turbine.git"
+homepage = "https://github.com/PistonDevelopers/turbine"
+documentation = "https://docs.rs/turbine_reactive"
+
+[dependencies]
+vecmath = "0.3.1"
+read_color = "0.1.0"
+fnv = "1.0.5"
