@@ -22,6 +22,7 @@ fn main() {
     let mut events = Events::new(EventSettings::new());
 
     let mut scene = Scene::new();
+    let mut frame_graph = FrameGraph::new();
 
     let cube = {
         let vertex_shader = scene.vertex_shader(include_str!("../assets/colored_cube.glslv"))
@@ -35,7 +36,7 @@ fn main() {
         let vertex_buffer = scene.vertex_buffer(vertex_array, 0, &vertex_buffer_data());
         let _ = scene.color_buffer(vertex_array, 1, &color_buffer_data());
 
-        scene.command_list(vec![
+        frame_graph.command_list(vec![
             EnableCullFace,
             CullFaceBack,
             UseProgram(program),
@@ -43,6 +44,14 @@ fn main() {
             DrawTriangles(vertex_array, vertex_buffer.len()),
         ])
     };
+
+    let cubes = frame_graph.command_list(vec![
+            Scale([1.0, 1.0, 1.0]),
+            Draw(cube),
+            Translate([2.5, 0.0, 0.0]),
+            RotateAxisDeg(vec3_normalized([1.0, 0.0, 1.0]), 45.0),
+            Draw(cube)
+        ]);
 
     let mut first_person = FirstPerson::new(
         [0.5, 0.5, 4.0],
@@ -59,10 +68,7 @@ fn main() {
             scene.clear([0.0, 0.0, 0.0, 1.0]);
             scene.scale([1.0, 1.0, 1.0]);
 
-            scene.draw(cube);
-            scene.translate([2.5, 0.0, 0.0]);
-            scene.rotate_axis_deg(vec3_normalized([1.0, 0.0, 1.0]), 45.0);
-            scene.draw(cube);
+            scene.draw(cubes, &frame_graph);
         }
     }
 }

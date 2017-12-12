@@ -22,6 +22,7 @@ fn main() {
     let mut events = Events::new(EventSettings::new());
 
     let mut scene = Scene::new();
+    let mut frame_graph = FrameGraph::new();
 
     let mut first_person = FirstPerson::new(
         [0.5, 0.5, 4.0],
@@ -50,7 +51,7 @@ fn main() {
         let light_position_id = scene.vector3_uniform(program, "LightPosition_worldspace").unwrap();
         let ambient_light_id = scene.f32_uniform(program, "ambientLight").unwrap();
 
-        (scene.command_list(vec![
+        (frame_graph.command_list(vec![
             SetModelViewProjection(matrix_id),
             SetView(view_matrix_id),
             SetModel(model_matrix_id),
@@ -58,6 +59,21 @@ fn main() {
             DrawTriangles(vertex_array, vertex_buffer.len()),
         ]), light_position_id, ambient_light_id)
     };
+
+    let monkeys = frame_graph.command_list(vec![
+        Translate([0.0, -1.0, 0.0]),
+        Draw(monkey),
+
+        PushTransform,
+        Translate([1.0, 2.0, 0.0]),
+        RotateYDeg(20.0),
+        Draw(monkey),
+        PopTransform,
+
+        Translate([0.0, 4.0, 0.0]),
+        RotateYDeg(-20.0),
+        Draw(monkey),
+    ]);
 
     let mut time: f32 = 0.0;
     while let Some(e) = events.next(&mut window) {
@@ -73,18 +89,7 @@ fn main() {
             scene.set_vector3(light_position_id, [time.cos() * 4.0, 5.0, time.sin() * 4.0]);
             scene.set_f32(ambient_light_id, 0.1);
 
-            scene.translate([0.0, -1.0, 0.0]);
-            scene.draw(monkey);
-
-            scene.push_transform();
-            scene.translate([1.0, 2.0, 0.0]);
-            scene.rotate_y_deg(20.0);
-            scene.draw(monkey);
-            scene.pop_transform();
-
-            scene.translate([0.0, 4.0, 0.0]);
-            scene.rotate_y_deg(-20.0);
-            scene.draw(monkey);
+            scene.draw(monkeys, &frame_graph);
         }
 
         if let Some(args) = e.update_args() {
