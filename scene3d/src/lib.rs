@@ -1,6 +1,20 @@
 //! # Turbine-Scene3D
 //!
 //! Scene rendering for the Turbine game engine.
+//!
+//! <video width="320" height="240" controls>
+//!  <source src="https://i.imgur.com/M0frz9B.mp4" type="video/mp4">
+//! Your browser does not support the video tag.
+//! </video>
+//!
+//! ### Design
+//!
+//! - Scene object stores all resources used for rendering
+//! - Frame graph stores command lists
+//!
+//! This design allows flexible programming of scenes, without the need for
+//! a tree structure to store nodes for scene data.
+//! The frame graph can be used to debug the scene.
 
 #![deny(missing_docs)]
 
@@ -21,7 +35,7 @@ use opengl_graphics::shader_utils::{
 };
 
 /// Stores a scene command.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum Command {
     /// Use program.
     UseProgram(Program),
@@ -51,46 +65,88 @@ pub enum Command {
     DrawLines(VertexArray, usize),
     /// Draw points.
     DrawPoints(VertexArray, usize),
+    /// Translate model.
+    Translate(Vector3<f32>),
+    /// Translate model in global coordinates.
+    TranslateGlobal(Vector3<f32>),
+    /// Scale model.
+    Scale(Vector3<f32>),
+    /// Rotate model around x axis with degrees.
+    RotateXDeg(f32),
+    /// Rotate model around y axis with degrees.
+    RotateYDeg(f32),
+    /// Rotate model around z axis with degrees.
+    RotateZDeg(f32),
+    /// Rotate model around axis with degrees.
+    RotateAxisDeg(Vector3<f32>, f32),
+    /// Push model transform to transform stack.
+    PushTransform,
+    /// Pop model transform from transform stack.
+    PopTransform,
+    /// Draw a command list.
+    Draw(CommandList),
+}
+
+/// Stores how stuff is rendered in a single frame.
+#[derive(Debug)]
+pub struct FrameGraph {
+    command_lists: Vec<Vec<Command>>,
+}
+
+impl FrameGraph {
+    /// Creates a new frame graph.
+    pub fn new() -> FrameGraph {
+        FrameGraph {
+            command_lists: vec![]
+        }
+    }
+
+    /// Create command list.
+    pub fn command_list(&mut self, commands: Vec<Command>) -> CommandList {
+        let id = self.command_lists.len();
+        self.command_lists.push(commands);
+        CommandList(id)
+    }
 }
 
 /// References a vertex shader.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct VertexShader(usize);
 /// References a fragment shader.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct FragmentShader(usize);
 /// References a program.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct Program(usize);
 /// References 4D matrix uniform.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct Matrix4Uniform(usize);
 /// References a 3D vector uniform.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct Vector3Uniform(usize);
 /// References a f32 uniform.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct F32Uniform(usize);
 /// References a vertex array object.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct VertexArray(usize);
 /// References a color buffer object.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct ColorBuffer(usize, usize);
 /// References a vertex buffer object.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct VertexBuffer(usize, usize);
 /// References an UV buffer object.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct UVBuffer(usize, usize);
 /// References a normal buffer object.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct NormalBuffer(usize, usize);
 /// References a command list object.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct CommandList(usize);
 /// References a texture object.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct Texture(usize);
 
 impl ColorBuffer {
@@ -205,7 +261,7 @@ impl ObjMesh {
     }
 }
 
-/// Stores scene information.
+/// Stores scene data.
 pub struct Scene {
     /// Projection transform.
     pub projection: Matrix4<f32>,
@@ -219,7 +275,6 @@ pub struct Scene {
     uniforms: Vec<gl::types::GLuint>,
     vertex_arrays: Vec<gl::types::GLuint>,
     buffers: Vec<gl::types::GLuint>,
-    command_lists: Vec<Vec<Command>>,
     textures: Vec<gl::types::GLuint>,
 }
 
@@ -236,7 +291,6 @@ impl Scene {
             uniforms: vec![],
             vertex_arrays: vec![],
             buffers: vec![],
-            command_lists: vec![],
             transform_stack: vec![],
             textures: vec![],
         }
@@ -524,13 +578,6 @@ impl Scene {
         }
     }
 
-    /// Create command list.
-    pub fn command_list(&mut self, commands: Vec<Command>) -> CommandList {
-        let id = self.command_lists.len();
-        self.command_lists.push(commands);
-        CommandList(id)
-    }
-
     /// Use program.
     pub fn use_program(&self, program: Program) {
         unsafe {gl::UseProgram(self.programs[program.0])}
@@ -768,7 +815,7 @@ impl Scene {
     }
 
     /// Executes commands in command list.
-    pub fn submit(&self, commands: &[Command]) {
+    pub fn submit(&mut self, commands: &[Command], frame_graph: &FrameGraph) {
         use Command::*;
 
         for command in commands {
@@ -787,13 +834,23 @@ impl Scene {
                 DrawTriangleStrip(vertex_array, len) => self.draw_triangle_strip(vertex_array, len),
                 DrawLines(vertex_array, len) => self.draw_lines(vertex_array, len),
                 DrawPoints(vertex_array, len) => self.draw_points(vertex_array, len),
+                Translate(v) => self.translate(v),
+                TranslateGlobal(v) => self.translate_global(v),
+                Scale(v) => self.scale(v),
+                RotateXDeg(deg) => self.rotate_x_deg(deg),
+                RotateYDeg(deg) => self.rotate_y_deg(deg),
+                RotateZDeg(deg) => self.rotate_z_deg(deg),
+                RotateAxisDeg(axis, deg) => self.rotate_axis_deg(axis, deg),
+                PushTransform => self.push_transform(),
+                PopTransform => self.pop_transform(),
+                Draw(command_list) => self.draw(command_list, frame_graph),
             }
         }
     }
 
-    /// Draws a command list.
-    pub fn draw(&self, command_list: CommandList) {
-        self.submit(&self.command_lists[command_list.0])
+    /// Draws a command list from frame graph.
+    pub fn draw(&mut self, command_list: CommandList, frame_graph: &FrameGraph) {
+        self.submit(&frame_graph.command_lists[command_list.0], frame_graph)
     }
 }
 
