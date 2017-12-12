@@ -24,4 +24,5 @@ some VR features will be developed using OpenGL and later ported to Gfx.
 - Graphics: [Gfx](https://github.com/gfx-rs/gfx)
 - Scripting: [Dyon](https://github.com/pistondevelopers/dyon)
 - Reactive Design: [Turbine-Reactive](./reactive)
+- Scene Rendering: [Turbine-Scene3D](./scene3d)
 - VR support: [Rust-OpenVR](https://github.com/rust-openvr/rust-openvr)
