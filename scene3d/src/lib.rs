@@ -35,7 +35,7 @@ use opengl_graphics::shader_utils::{
 };
 
 /// Stores a scene command.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Command {
     /// Use program.
     UseProgram(Program),
@@ -110,43 +110,43 @@ impl FrameGraph {
 }
 
 /// References a vertex shader.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct VertexShader(usize);
 /// References a fragment shader.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct FragmentShader(usize);
 /// References a program.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Program(usize);
 /// References 4D matrix uniform.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Matrix4Uniform(usize);
 /// References a 3D vector uniform.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Vector3Uniform(usize);
 /// References a f32 uniform.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct F32Uniform(usize);
 /// References a vertex array object.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct VertexArray(usize);
 /// References a color buffer object.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ColorBuffer(usize, usize);
 /// References a vertex buffer object.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct VertexBuffer(usize, usize);
 /// References an UV buffer object.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct UVBuffer(usize, usize);
 /// References a normal buffer object.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct NormalBuffer(usize, usize);
 /// References a command list object.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct CommandList(usize);
 /// References a texture object.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Texture(usize);
 
 impl ColorBuffer {
