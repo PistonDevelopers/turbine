@@ -121,6 +121,9 @@ pub struct Program(usize);
 /// References 4D matrix uniform.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Matrix4Uniform(usize);
+/// References a 2D vector uniform.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub struct Vector2Uniform(usize);
 /// References a 3D vector uniform.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Vector3Uniform(usize);
@@ -391,6 +394,18 @@ impl Scene {
         Ok(Matrix4Uniform(id))
     }
 
+    /// Create 2D vector uniform.
+    pub fn vector2_uniform(
+        &mut self,
+        program: Program,
+        name: &str
+    ) -> Result<Vector2Uniform, String> {
+        let id = self.uniforms.len();
+        let uniform_location = uniform_location(self.programs[program.0], name)?;
+        self.uniforms.push(uniform_location);
+        Ok(Vector2Uniform(id))
+    }
+
     /// Create 3D vector uniform.
     pub fn vector3_uniform(
         &mut self,
@@ -641,6 +656,13 @@ impl Scene {
     pub fn set_model(&self, matrix_id: Matrix4Uniform) {
         unsafe {
             gl::UniformMatrix4fv(self.uniforms[matrix_id.0] as i32, 1, gl::FALSE, &self.model[0][0])
+        }
+    }
+
+    /// Set 2D vector uniform.
+    pub fn set_vector2(&self, v_id: Vector2Uniform, v: Vector2<f32>) {
+        unsafe {
+            gl::Uniform2f(self.uniforms[v_id.0] as i32, v[0], v[1]);
         }
     }
 
