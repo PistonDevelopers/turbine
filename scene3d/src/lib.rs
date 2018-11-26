@@ -502,7 +502,45 @@ impl Scene {
         }
     }
 
-    /// Create vertex buffer.
+    /// Create vertex buffer for 2D coordinates.
+    pub fn vertex_buffer_2d(
+        &mut self,
+        vertex_array: VertexArray,
+        attribute: u32,
+        data: &[f32]
+    ) -> VertexBuffer {
+        use std::mem::{size_of, transmute};
+        use std::ptr::null;
+
+        unsafe {
+            let id = self.buffers.len();
+            let mut vertex_buffer = 0;
+            gl::GenBuffers(1, &mut vertex_buffer);
+            gl::BindBuffer(gl::ARRAY_BUFFER, vertex_buffer);
+            gl::BufferData(
+                gl::ARRAY_BUFFER,
+                (data.len() * size_of::<gl::types::GLfloat>()) as isize,
+                transmute(data.as_ptr()),
+                gl::STATIC_DRAW
+            );
+
+            gl::BindVertexArray(self.vertex_arrays[vertex_array.0]);
+            gl::VertexAttribPointer(
+                attribute,  // attribute
+                2,          // size
+                gl::FLOAT,  // type
+                gl::FALSE,  // normalized?
+                0,          // stride
+                null()      // array buffer offset
+            );
+            gl::EnableVertexAttribArray(attribute);
+
+            self.buffers.push(vertex_buffer);
+            VertexBuffer(id, data.len() / 2)
+        }
+    }
+
+    /// Create vertex buffer for 3D coordinates.
     pub fn vertex_buffer(
         &mut self,
         vertex_array: VertexArray,
