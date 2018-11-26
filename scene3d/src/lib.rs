@@ -144,9 +144,12 @@ pub struct VertexArray(usize);
 /// References a color buffer object.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ColorBuffer(usize, usize);
-/// References a vertex buffer object.
+/// References a 3D vertex buffer object.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub struct VertexBuffer(usize, usize);
+pub struct VertexBuffer3(usize, usize);
+/// References a 2D vertex buffer object.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub struct VertexBuffer2(usize, usize);
 /// References an UV buffer object.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct UVBuffer(usize, usize);
@@ -165,7 +168,12 @@ impl ColorBuffer {
     pub fn len(&self) -> usize {self.1}
 }
 
-impl VertexBuffer {
+impl VertexBuffer3 {
+    /// Length of vertex buffer.
+    pub fn len(&self) -> usize {self.1}
+}
+
+impl VertexBuffer2 {
     /// Length of vertex buffer.
     pub fn len(&self) -> usize {self.1}
 }
@@ -564,12 +572,12 @@ impl Scene {
     }
 
     /// Create vertex buffer for 2D coordinates.
-    pub fn vertex_buffer_2d(
+    pub fn vertex_buffer2(
         &mut self,
         vertex_array: VertexArray,
         attribute: u32,
         data: &[f32]
-    ) -> VertexBuffer {
+    ) -> VertexBuffer2 {
         use std::mem::{size_of, transmute};
         use std::ptr::null;
 
@@ -597,17 +605,17 @@ impl Scene {
             gl::EnableVertexAttribArray(attribute);
 
             self.buffers.push(vertex_buffer);
-            VertexBuffer(id, data.len() / 2)
+            VertexBuffer2(id, data.len() / 2)
         }
     }
 
     /// Create vertex buffer for 3D coordinates.
-    pub fn vertex_buffer(
+    pub fn vertex_buffer3(
         &mut self,
         vertex_array: VertexArray,
         attribute: u32,
         data: &[f32]
-    ) -> VertexBuffer {
+    ) -> VertexBuffer3 {
         use std::mem::{size_of, transmute};
         use std::ptr::null;
 
@@ -635,7 +643,7 @@ impl Scene {
             gl::EnableVertexAttribArray(attribute);
 
             self.buffers.push(vertex_buffer);
-            VertexBuffer(id, data.len() / 3)
+            VertexBuffer3(id, data.len() / 3)
         }
     }
 
