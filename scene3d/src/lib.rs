@@ -53,6 +53,8 @@ pub enum Command {
     SetVector2(Vector2Uniform, Vector2<f32>),
     /// Set 3D vector uniform.
     SetVector3(Vector3Uniform, Vector3<f32>),
+    /// Set matrx uniform.
+    SetMatrix4(Matrix4Uniform, Matrix4<f32>),
     /// Enable cull face.
     EnableCullFace,
     /// Disable cull face.
@@ -703,6 +705,13 @@ impl Scene {
         }
     }
 
+    /// Set matrix uniform.
+    pub fn set_matrix4(&self, matrix_id: Matrix4Uniform, val: Matrix4<f32>) {
+        unsafe {
+            gl::UniformMatrix4fv(self.uniforms[matrix_id.0] as i32, 1, gl::FALSE, &val[0][0])
+        }
+    }
+
     /// Set 2D vector uniform.
     pub fn set_vector2(&self, v_id: Vector2Uniform, v: Vector2<f32>) {
         unsafe {
@@ -938,6 +947,7 @@ impl Scene {
                 SetF32(uni, val) => self.set_f32(uni, val),
                 SetVector2(uni, val) => self.set_vector2(uni, val),
                 SetVector3(uni, val) => self.set_vector3(uni, val),
+                SetMatrix4(uni, val) => self.set_matrix4(uni, val),
                 EnableCullFace => self.enable_cull_face(),
                 DisableCullFace => self.disable_cull_face(),
                 CullFaceFront => self.cull_face_front(),
