@@ -40,7 +40,7 @@ fn main() {
     let (monkey, light_position_id, ambient_light_id) = {
         let obj_mesh = ObjMesh::load("assets/monkey.obj").unwrap();
         let vertex_array = scene.vertex_array();
-        let vertex_buffer = scene.vertex_buffer(vertex_array, 0, &obj_mesh.vertices);
+        let vertex_buffer = scene.vertex_buffer3(vertex_array, 0, &obj_mesh.vertices);
         let _ = scene.uv_buffer(vertex_array, 1, &obj_mesh.uvs);
         let _ = scene.normal_buffer(vertex_array, 2, &obj_mesh.normals);
         let texture = scene.load_texture("assets/monkey.png").unwrap();

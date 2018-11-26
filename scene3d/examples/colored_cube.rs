@@ -33,7 +33,7 @@ fn main() {
         let mvp = scene.matrix4_uniform(program, "MVP").unwrap();
 
         let vertex_array = scene.vertex_array();
-        let vertex_buffer = scene.vertex_buffer(vertex_array, 0, &vertex_buffer_data());
+        let vertex_buffer = scene.vertex_buffer3(vertex_array, 0, &vertex_buffer_data());
         let _ = scene.color_buffer(vertex_array, 1, &color_buffer_data());
 
         frame_graph.command_list(vec![
