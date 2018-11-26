@@ -47,6 +47,8 @@ pub enum Command {
     SetView(Matrix4Uniform),
     /// Set texture.
     SetTexture(Texture),
+    /// Set f32 uniform.
+    SetF32(F32Uniform, f32),
     /// Enable cull face.
     EnableCullFace,
     /// Disable cull face.
@@ -929,6 +931,7 @@ impl Scene {
                 SetModel(model) => self.set_model(model),
                 SetView(view) => self.set_view(view),
                 SetTexture(texture) => self.set_texture(texture),
+                SetF32(uni, val) => self.set_f32(uni, val),
                 EnableCullFace => self.enable_cull_face(),
                 DisableCullFace => self.disable_cull_face(),
                 CullFaceFront => self.cull_face_front(),
