@@ -21,7 +21,7 @@ fn main() {
     window.set_capture_cursor(true);
     let mut events = Events::new(EventSettings::new());
 
-    let mut scene = Scene::new();
+    let mut scene = Scene::new(SceneSettings::new());
     let mut frame_graph = FrameGraph::new();
 
     let cube = {

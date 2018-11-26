@@ -264,8 +264,45 @@ impl ObjMesh {
     }
 }
 
+/// Stores scene settings.
+#[derive(Clone)]
+pub struct SceneSettings {
+    clear_depth_buffer: bool,
+    clear_enable_depth_test: bool,
+}
+
+impl SceneSettings {
+    /// Returns new scene settings with default settings.
+    pub fn new() -> SceneSettings {
+        SceneSettings {
+            clear_depth_buffer: true,
+            clear_enable_depth_test: true,
+        }
+    }
+
+    /// Set whether to clear depth buffer on clear.
+    pub fn clear_depth_buffer(mut self, val: bool) -> Self {
+        self.clear_depth_buffer = val;
+        self
+    }
+
+    /// Set whether to enable depth test on clear.
+    ///
+    /// Uses depth test function `LESS` by default.
+    pub fn clear_enable_depth_test(mut self, val: bool) -> Self {
+        self.clear_enable_depth_test = val;
+        self
+    }
+}
+
+impl Default for SceneSettings {
+    fn default() -> Self {SceneSettings::new()}
+}
+
 /// Stores scene data.
 pub struct Scene {
+    /// Scene settings.
+    pub settings: SceneSettings,
     /// Projection transform.
     pub projection: Matrix4<f32>,
     /// Camera transform.
@@ -283,9 +320,10 @@ pub struct Scene {
 
 impl Scene {
     /// Create new scene.
-    pub fn new() -> Scene {
+    pub fn new(settings: SceneSettings) -> Scene {
         let mat_id = mat4_id();
         Scene {
+            settings,
             projection: mat_id,
             camera: mat_id,
             model: mat_id,
@@ -801,9 +839,15 @@ impl Scene {
     pub fn clear(&self, bg_color: [f32; 4]) {
         unsafe {
             gl::ClearColor(bg_color[0], bg_color[1], bg_color[2], bg_color[3]);
-            gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
-            gl::Enable(gl::DEPTH_TEST);
-            gl::DepthFunc(gl::LESS);
+            if self.settings.clear_depth_buffer {
+                gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
+            } else {
+                gl::Clear(gl::COLOR_BUFFER_BIT);
+            }
+            if self.settings.clear_enable_depth_test {
+                gl::Enable(gl::DEPTH_TEST);
+                gl::DepthFunc(gl::LESS);
+            }
         }
     }
 
