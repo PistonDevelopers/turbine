@@ -10,8 +10,6 @@ A 3D game engine with built-in editor
 
 *Notice! This project is in early phase. Expect bugs and missing features.*
 
-This is a project to put together
-
 ### Development
 
 Some parts of the engine will first be tested and developed as part of other projects.
