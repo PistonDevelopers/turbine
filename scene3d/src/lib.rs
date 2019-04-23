@@ -55,6 +55,10 @@ pub enum Command {
     SetVector3(Vector3Uniform, Vector3<f32>),
     /// Set matrx uniform.
     SetMatrix4(Matrix4Uniform, Matrix4<f32>),
+    /// Enable blend.
+    EnableBlend,
+    /// Disable blend.
+    DisableBlend,
     /// Enable cull face.
     EnableCullFace,
     /// Disable cull face.
@@ -874,6 +878,20 @@ impl Scene {
         }
     }
 
+    /// Enable blend.
+    pub fn enable_blend(&self) {
+        unsafe {
+            gl::Enable(gl::BLEND);
+        }
+    }
+
+    /// Disable blend.
+    pub fn disable_blend(&self) {
+        unsafe {
+            gl::Disable(gl::BLEND);
+        }
+    }
+
     /// Enable cull face.
     pub fn enable_cull_face(&self) {
         unsafe {
@@ -956,6 +974,8 @@ impl Scene {
                 SetVector2(uni, val) => self.set_vector2(uni, val),
                 SetVector3(uni, val) => self.set_vector3(uni, val),
                 SetMatrix4(uni, val) => self.set_matrix4(uni, val),
+                EnableBlend => self.enable_blend(),
+                DisableBlend => self.disable_blend(),
                 EnableCullFace => self.enable_cull_face(),
                 DisableCullFace => self.disable_cull_face(),
                 CullFaceFront => self.cull_face_front(),
