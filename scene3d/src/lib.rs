@@ -55,6 +55,10 @@ pub enum Command {
     SetVector3(Vector3Uniform, Vector3<f32>),
     /// Set matrx uniform.
     SetMatrix4(Matrix4Uniform, Matrix4<f32>),
+    /// Enable framebuffer sRGB.
+    EnableFrameBufferSRGB,
+    /// Disable framebuffer sRGB.
+    DisableFrameBufferSRGB,
     /// Enable blend.
     EnableBlend,
     /// Disable blend.
@@ -878,6 +882,20 @@ impl Scene {
         }
     }
 
+    /// Enable framebuffer sRGB.
+    pub fn enable_framebuffer_srgb(&self) {
+        unsafe {
+            gl::Enable(gl::FRAMEBUFFER_SRGB);
+        }
+    }
+
+    /// Disable framebuffer sRGB.
+    pub fn disable_framebuffer_srgb(&self) {
+        unsafe {
+            gl::Disable(gl::FRAMEBUFFER_SRGB);
+        }
+    }
+
     /// Enable blend.
     pub fn enable_blend(&self) {
         unsafe {
@@ -974,6 +992,8 @@ impl Scene {
                 SetVector2(uni, val) => self.set_vector2(uni, val),
                 SetVector3(uni, val) => self.set_vector3(uni, val),
                 SetMatrix4(uni, val) => self.set_matrix4(uni, val),
+                EnableFrameBufferSRGB => self.enable_framebuffer_srgb(),
+                DisableFrameBufferSRGB => self.disable_framebuffer_srgb(),
                 EnableBlend => self.enable_blend(),
                 DisableBlend => self.disable_blend(),
                 EnableCullFace => self.enable_cull_face(),
