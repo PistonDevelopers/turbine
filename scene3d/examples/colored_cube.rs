@@ -1,5 +1,6 @@
 extern crate piston;
 extern crate sdl2_window;
+extern crate winit_window;
 extern crate turbine_scene3d;
 extern crate vecmath;
 extern crate camera_controllers;
@@ -7,28 +8,55 @@ extern crate camera_controllers;
 use piston::window::*;
 use piston::event_loop::*;
 use piston::input::RenderEvent;
-use sdl2_window::Sdl2Window;
 use turbine_scene3d::*;
 use turbine_scene3d::Command::*;
 use vecmath::*;
 use camera_controllers::*;
 
 fn main() {
-    let settings = WindowSettings::new("colored cube", [512; 2])
-        .samples(4)
-        .exit_on_esc(true);
-    let mut window: Sdl2Window = settings.build().unwrap();
-    window.set_capture_cursor(true);
-    let mut events = Events::new(EventSettings::new());
+    #[cfg(not(any(feature = "dx12", feature = "metal", feature = "vulkan")))]
+    let (mut window, mut scene) = {
+        use sdl2_window::Sdl2Window;
+        let settings = WindowSettings::new("colored cube", [512; 2])
+            .samples(4)
+            .exit_on_esc(true);
+        let mut window: Sdl2Window = settings.build().unwrap();
+        window.set_capture_cursor(true);
+        (window, Scene::new(SceneSettings::new()))
+    };
 
-    let mut scene = Scene::new(SceneSettings::new());
+    #[cfg(any(feature = "dx12", feature = "metal", feature = "vulkan"))]
+    let mut scene = {
+        let settings = WindowSettings::new("colored cube", [512; 2])
+            .samples(4)
+            .exit_on_esc(true);
+        let scene = Scene::new(SceneSettings::new(), settings);
+        //scene.get_window_wrapper().set_capture_cursor(true);
+        scene
+    };
+    
+    let mut events = Events::new(EventSettings::new());
     let mut frame_graph = FrameGraph::new();
 
-    let cube = {
+    #[cfg(not(any(feature = "dx12", feature = "metal", feature = "vulkan")))]
+    let (vertex_shader, fragment_shader) = {
         let vertex_shader = scene.vertex_shader(include_str!("../assets/colored_cube.glslv"))
             .unwrap();
         let fragment_shader = scene.fragment_shader(include_str!("../assets/colored_cube.glslf"))
             .unwrap();
+        (vertex_shader, fragment_shader)
+    };
+    
+    #[cfg(any(feature = "dx12", feature = "metal", feature = "vulkan"))]
+    let (vertex_shader, fragment_shader) = {
+        let vertex_shader = scene.vertex_shader(include_str!("../assets/colored_cube_rendy.glslv"))
+            .unwrap();
+        let fragment_shader = scene.fragment_shader(include_str!("../assets/colored_cube_rendy.glslf"))
+            .unwrap();
+        (vertex_shader, fragment_shader)
+    };
+
+    let cube = {
         let program = scene.program_from_vertex_fragment(vertex_shader, fragment_shader);
         let mvp = scene.matrix4_uniform(program, "MVP").unwrap();
 
@@ -58,19 +86,22 @@ fn main() {
         FirstPersonSettings::keyboard_wasd()
     );
 
-    while let Some(e) = events.next(&mut window) {
+    while let Some(e) = events.next(scene.get_window_wrapper()) {
         first_person.event(&e);
 
         if let Some(args) = e.render_args() {
-            scene.projection = get_projection(&window);
-            scene.camera = first_person.camera(args.ext_dt).orthogonal();
-            scene.model = mat4_id();
+            let proj = get_projection(scene.get_window_wrapper());
+            scene.set_projection(proj);
+            scene.set_camera(first_person.camera(args.ext_dt).orthogonal());
+            scene.set_model(mat4_id());
             scene.clear([0.0, 0.0, 0.0, 1.0]);
             scene.scale([1.0, 1.0, 1.0]);
 
             scene.draw(cubes, &frame_graph);
         }
     }
+
+    scene.drop();
 }
 
 fn get_projection<W: Window>(w: &W) -> Matrix4<f32> {
@@ -136,41 +167,41 @@ fn vertex_buffer_data() -> Vec<f32> {
 
 fn color_buffer_data() -> Vec<f32> {
     vec![
-        0.583,  0.771,  0.014,
-        0.609,  0.115,  0.436,
-        0.327,  0.483,  0.844,
-        0.822,  0.569,  0.201,
-        0.435,  0.602,  0.223,
-        0.310,  0.747,  0.185,
-        0.597,  0.770,  0.761,
-        0.559,  0.436,  0.730,
-        0.359,  0.583,  0.152,
-        0.483,  0.596,  0.789,
-        0.559,  0.861,  0.639,
-        0.195,  0.548,  0.859,
-        0.014,  0.184,  0.576,
-        0.771,  0.328,  0.970,
-        0.406,  0.615,  0.116,
-        0.676,  0.977,  0.133,
-        0.971,  0.572,  0.833,
-        0.140,  0.616,  0.489,
-        0.997,  0.513,  0.064,
-        0.945,  0.719,  0.592,
-        0.543,  0.021,  0.978,
-        0.279,  0.317,  0.505,
-        0.167,  0.620,  0.077,
-        0.347,  0.857,  0.137,
-        0.055,  0.953,  0.042,
-        0.714,  0.505,  0.345,
-        0.783,  0.290,  0.734,
-        0.722,  0.645,  0.174,
-        0.302,  0.455,  0.848,
-        0.225,  0.587,  0.040,
-        0.517,  0.713,  0.338,
-        0.053,  0.959,  0.120,
-        0.393,  0.621,  0.362,
-        0.673,  0.211,  0.457,
-        0.820,  0.883,  0.371,
-        0.982,  0.099,  0.879
+        0.583,  0.771,  0.014,  1.0,
+        0.609,  0.115,  0.436,  1.0,
+        0.327,  0.483,  0.844,  1.0,
+        0.822,  0.569,  0.201,  1.0,
+        0.435,  0.602,  0.223,  1.0,
+        0.310,  0.747,  0.185,  1.0,
+        0.597,  0.770,  0.761,  1.0,
+        0.559,  0.436,  0.730,  1.0,
+        0.359,  0.583,  0.152,  1.0,
+        0.483,  0.596,  0.789,  1.0,
+        0.559,  0.861,  0.639,  1.0,
+        0.195,  0.548,  0.859,  1.0,
+        0.014,  0.184,  0.576,  1.0,
+        0.771,  0.328,  0.970,  1.0,
+        0.406,  0.615,  0.116,  1.0,
+        0.676,  0.977,  0.133,  1.0,
+        0.971,  0.572,  0.833,  1.0,
+        0.140,  0.616,  0.489,  1.0,
+        0.997,  0.513,  0.064,  1.0,
+        0.945,  0.719,  0.592,  1.0,
+        0.543,  0.021,  0.978,  1.0,
+        0.279,  0.317,  0.505,  1.0,
+        0.167,  0.620,  0.077,  1.0,
+        0.347,  0.857,  0.137,  1.0,
+        0.055,  0.953,  0.042,  1.0,
+        0.714,  0.505,  0.345,  1.0,
+        0.783,  0.290,  0.734,  1.0,
+        0.722,  0.645,  0.174,  1.0,
+        0.302,  0.455,  0.848,  1.0,
+        0.225,  0.587,  0.040,  1.0,
+        0.517,  0.713,  0.338,  1.0,
+        0.053,  0.959,  0.120,  1.0,
+        0.393,  0.621,  0.362,  1.0,
+        0.673,  0.211,  0.457,  1.0,
+        0.820,  0.883,  0.371,  1.0,
+        0.982,  0.099,  0.879,  1.0,
     ]
 }

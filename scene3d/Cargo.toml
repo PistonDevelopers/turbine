@@ -10,6 +10,13 @@ repository = "https://github.com/PistonDevelopers/turbine.git"
 homepage = "https://github.com/PistonDevelopers/turbine"
 documentation = "https://docs.rs/turbine_scene3d"
 
+[features]
+default = ["rendy"]
+metal = ["rendy/metal"]
+dx12 = ["rendy/dx12"]
+vulkan = ["rendy/vulkan"]
+empty = ["rendy/empty"]
+
 [dependencies]
 gl = "0.11.0"
 piston = "0.49.0"
@@ -17,7 +24,19 @@ vecmath = "1.0.0"
 piston2d-opengl_graphics = "0.65.0"
 wavefront_obj = "6.0.0"
 image = "0.21.0"
+failure = "0.1"
+# This is the best way to handle reflecting uniform variables until rendy changes
+spirv-reflect = "0.2.1" 
+serde = "1.0"
+serde_json = "1.0"
+env_logger = "0.6"
+pistoncore-winit_window = { git = "https://github.com/aaruel/winit_window", rev = "82d1d3b" }
 
 [dev-dependencies]
 pistoncore-sdl2_window = "0.63.0"
 camera_controllers = "0.31.0"
+
+[dependencies.rendy]
+optional = true
+version = "0.3.2"
+features = ["texture-image", "shader-compiler", "vulkan", "serde-1"]
