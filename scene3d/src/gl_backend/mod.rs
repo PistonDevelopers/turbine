@@ -46,6 +46,21 @@ impl Scene {
         }
     }
 
+    /// Set projection matrix.
+    pub fn projection(&mut self, p: Matrix4<f32>) {
+        self.projection = p;
+    }
+
+    /// Set camera matrix.
+    pub fn camera(&mut self, c: Matrix4<f32>) {
+        self.camera = c;
+    }
+
+    /// Set model matrix.
+    pub fn model(&mut self, m: Matrix4<f32>) {
+        self.model = m;
+    }
+
     /// Load texture from path.
     pub fn load_texture<P: AsRef<Path>>(&mut self, path: P) -> Result<Texture, image::ImageError> {
         use std::mem::transmute;

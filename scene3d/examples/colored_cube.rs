@@ -15,46 +15,47 @@ use camera_controllers::*;
 
 fn main() {
     #[cfg(not(any(feature = "dx12", feature = "metal", feature = "vulkan")))]
-    let (mut window, mut scene) = {
+    let (mut window, mut scene, vertex_shader, fragment_shader) = {
         use sdl2_window::Sdl2Window;
         let settings = WindowSettings::new("colored cube", [512; 2])
             .samples(4)
             .exit_on_esc(true);
         let mut window: Sdl2Window = settings.build().unwrap();
         window.set_capture_cursor(true);
-        (window, Scene::new(SceneSettings::new()))
-    };
-
-    #[cfg(any(feature = "dx12", feature = "metal", feature = "vulkan"))]
-    let mut scene = {
-        let settings = WindowSettings::new("colored cube", [512; 2])
-            .samples(4)
-            .exit_on_esc(true);
-        let scene = Scene::new(SceneSettings::new(), settings);
-        //scene.get_window_wrapper().set_capture_cursor(true);
-        scene
-    };
-    
-    let mut events = Events::new(EventSettings::new());
-    let mut frame_graph = FrameGraph::new();
-
-    #[cfg(not(any(feature = "dx12", feature = "metal", feature = "vulkan")))]
-    let (vertex_shader, fragment_shader) = {
+        let mut scene = Scene::new(SceneSettings::new());
         let vertex_shader = scene.vertex_shader(include_str!("../assets/colored_cube.glslv"))
             .unwrap();
         let fragment_shader = scene.fragment_shader(include_str!("../assets/colored_cube.glslf"))
             .unwrap();
-        (vertex_shader, fragment_shader)
+        (window, scene, vertex_shader, fragment_shader)
     };
-    
+
     #[cfg(any(feature = "dx12", feature = "metal", feature = "vulkan"))]
-    let (vertex_shader, fragment_shader) = {
+    let (mut scene, vertex_shader, fragment_shader) = {
+        let settings = WindowSettings::new("colored cube", [512; 2])
+            .samples(4)
+            .exit_on_esc(true);
+        let mut scene = Scene::new(SceneSettings::new(), settings);
+        scene.window().set_capture_cursor(true);
         let vertex_shader = scene.vertex_shader(include_str!("../assets/colored_cube_rendy.glslv"))
             .unwrap();
         let fragment_shader = scene.fragment_shader(include_str!("../assets/colored_cube_rendy.glslf"))
             .unwrap();
-        (vertex_shader, fragment_shader)
+        (scene, vertex_shader, fragment_shader)
     };
+
+    #[cfg(not(any(feature = "dx12", feature = "metal", feature = "vulkan")))]
+    macro_rules! window {
+        () => { &mut window };
+    }
+
+    #[cfg(any(feature = "dx12", feature = "metal", feature = "vulkan"))]
+    macro_rules! window {
+        () => { scene.window() };
+    }
+    
+    let mut events = Events::new(EventSettings::new());
+    let mut frame_graph = FrameGraph::new();
 
     let cube = {
         let program = scene.program_from_vertex_fragment(vertex_shader, fragment_shader);
@@ -86,14 +87,14 @@ fn main() {
         FirstPersonSettings::keyboard_wasd()
     );
 
-    while let Some(e) = events.next(scene.get_window_wrapper()) {
+    while let Some(e) = events.next(window!()) {
         first_person.event(&e);
 
         if let Some(args) = e.render_args() {
-            let proj = get_projection(scene.get_window_wrapper());
-            scene.set_projection(proj);
-            scene.set_camera(first_person.camera(args.ext_dt).orthogonal());
-            scene.set_model(mat4_id());
+            let proj = get_projection(window!());
+            scene.projection(proj);
+            scene.camera(first_person.camera(args.ext_dt).orthogonal());
+            scene.model(mat4_id());
             scene.clear([0.0, 0.0, 0.0, 1.0]);
             scene.scale([1.0, 1.0, 1.0]);
 
@@ -101,6 +102,7 @@ fn main() {
         }
     }
 
+    #[cfg(any(feature = "dx12", feature = "metal", feature = "vulkan"))]
     scene.drop();
 }
 

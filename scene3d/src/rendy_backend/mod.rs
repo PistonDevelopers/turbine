@@ -15,8 +15,7 @@ use std::{
     io::BufReader,
     fs::File,
     option::Option,
-    mem::size_of,
-    sync::Arc
+    mem::size_of
 };
 use self::rendy::{
     command::{RenderPassEncoder, QueueId},
@@ -52,6 +51,9 @@ type Backend = rendy::metal::Backend;
 
 #[cfg(feature = "vulkan")]
 type Backend = rendy::vulkan::Backend;
+
+// Indicates how many UBOs can exist in a frame, necessary for dynamic uniforms during a draw
+const UBOS_PER_FRAME_SIZE: u64 = 2048;
 
 // Rendy doesn't implement this :)
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
@@ -229,17 +231,55 @@ impl ShaderData {
         ShaderData { shader, reflection, uniform_map }
     }
 
-    pub fn get_uniform(&self, name: &str) -> Vec<&ReflectBlockVariable> {
-        let mut variables: Vec<&ReflectBlockVariable> = Vec::new();
+    pub fn get_uniform(&self, name: &str) -> Result<&ReflectBlockVariable, &str> {
+        let mut ret = Err("Could not find the uniform variable");
         // Through each binding
         for v in &self.uniform_map {
-            // push a block variable that matches the input name
+            // return the block variable that matches the input name
             match v.block.members.iter().find(|m| m.name == name) {
-                Some(var) => variables.push(var),
+                Some(var) => {
+                    ret = Ok(var);
+                    break
+                },
                 _ => ()
             }
         };
-        variables
+        ret
+    }
+}
+
+// This is specifically for packing an array of parameters for the actual renderpass
+#[derive(Debug)]
+pub struct DrawData {
+    ubo_index: usize,
+    mesh_index: usize,
+}
+
+// Correspond each type with its UBO name and std140 alignment size
+#[derive(Debug, Clone)]
+pub enum UboType {
+    //   Type          Name    Offset
+    Mat4(Matrix4<f32>, String, u64),
+    Vec2(Vector2<f32>, String, u64),
+    Vec3(Vector3<f32>, String, u64),
+    Vec4(Vector4<f32>, String, u64),
+    Float(       f32 , String, u64),
+}
+
+#[derive(Debug)]
+pub struct UboData {
+    // Track the current data of the UBO passed into the scene
+    pub current_data: Vec<UboType>,
+    // For a single frame, track the changes to the uniform with each draw call, then upload into the buffer during the prepare, and index during the draw
+    pub frame_data: Vec<Vec<UboType>>
+}
+
+impl UboData {
+    pub fn new() -> Self {
+        UboData {
+            current_data: Vec::new(),
+            frame_data: Vec::new()
+        }
     }
 }
 
@@ -253,10 +293,9 @@ pub struct Aux<B: hal::Backend> {
     /// Model transform.
     pub model: Matrix4<f32>,
     pub transform_stack: Vec<Matrix4<f32>>,
-    // Used to perform drawing and transformation in a pipeline draw
-    pub frame_graph: Arc<FrameGraph>,
-    pub bound_command_list: CommandList,
-    // 
+    // Uniform data buffer
+    pub ubo_data: UboData,
+    pub draw_data: Vec<DrawData>,
     pub frames: usize,
     pub align: u64,
     // Pass shaders for pipeline creation
@@ -284,8 +323,8 @@ where
             camera: mat_id,
             model: mat_id,
             transform_stack: vec![],
-            frame_graph: Arc::new(FrameGraph::new()),
-            bound_command_list: CommandList(0),
+            ubo_data: UboData::new(),
+            draw_data: Vec::new(),
             frames,
             align,
             bound_shader,
@@ -302,12 +341,6 @@ where
 
 #[derive(Debug, Default)]
 struct RendyPipelineDesc;
-
-impl RendyPipelineDesc {
-    fn new() -> RendyPipelineDesc {
-        Default::default()
-    }
-}
 
 impl<B> render::SimpleGraphicsPipelineDesc<B, Aux<B>> for RendyPipelineDesc 
 where
@@ -357,15 +390,15 @@ where
         _images: Vec<NodeImage>,
         set_layouts: &[Handle<DescriptorSetLayout<B>>],
     ) -> Result<RendyPipeline<B>, failure::Error> {
-        let size = size_of::<f32>() as u64 * 16;
-        let frames = ctx.frames_in_flight as u64;
         let align = factory
             .physical()
             .limits()
             .min_uniform_buffer_offset_alignment;
-        // Buffer frame size needs to be a multiple of the min_uniform_buffer_offset_alignment
-        let frame_size = ((size / align) + 1) * align;
-        print!("{:#?}", frame_size);
+
+        // Size of the UBO for the attached shader
+        let ubo_size = (((size_of::<f32>() as u64 * 16) / align) + 1) * align;
+        let frame_size = ubo_size * UBOS_PER_FRAME_SIZE;
+        let frames = ctx.frames_in_flight as u64;
 
         let buffer = factory
             .create_buffer(
@@ -377,26 +410,36 @@ where
             )
             .unwrap();
 
-        let mut sets = Vec::new();
-        for index in 0..frames {
-            unsafe {
+        let mut sets = Vec::with_capacity(frames as usize * UBOS_PER_FRAME_SIZE as usize);
+        for frame in 0..frames {
+            for index in 0..UBOS_PER_FRAME_SIZE {
+                let frame_offset = frame * frame_size;
+                let ubo_offset = ubo_size * index;
                 let set = factory
                     .create_descriptor_set(set_layouts[0].clone())
                     .unwrap();
-                factory.write_descriptor_sets(Some(hal::pso::DescriptorSetWrite {
-                    set: set.raw(),
-                    binding: 0,
-                    array_offset: 0,
-                    descriptors: Some(hal::pso::Descriptor::Buffer(
-                        buffer.raw(),
-                        Some(index*frame_size)..Some((index*frame_size) + size)
-                    ))
-                }));
-                sets.push(set);
+                unsafe {
+                    factory.write_descriptor_sets(Some(hal::pso::DescriptorSetWrite {
+                        set: set.raw(),
+                        binding: 0,
+                        array_offset: 0,
+                        descriptors: Some(hal::pso::Descriptor::Buffer(
+                            buffer.raw(),
+                            Some(frame_offset + ubo_offset)..Some(frame_offset + ubo_offset + ubo_size)
+                        ))
+                    }));
+                    sets.push(set);
+                }
             }
         }
 
-        Ok(RendyPipeline{ align, buffer, sets })
+        // Buffer is arranged in three levels as such:
+        // Frames(3) [
+        //     Ubos(2048) [
+        //         Ubo { .. }, ..
+        //     ], ..
+        // ]
+        Ok(RendyPipeline{ frame_size, ubo_size, ubo_index_prep: 0, ubo_index_draw: 0, buffer, sets })
     }
 }
 
@@ -404,7 +447,10 @@ where
 #[derive(Debug)]
 struct RendyPipeline<B: hal::Backend> {
     //textures: Vec<rendy::texture::Texture<B>>,
-    align: u64,
+    frame_size: u64, // size of a single frame
+    ubo_size: u64, // size of a single UBO
+    ubo_index_prep: u64, // selects which UBO within the frame we're using
+    ubo_index_draw: usize,
     buffer: Escape<Buffer<B>>,
     sets: Vec<Escape<DescriptorSet<B>>>,
 }
@@ -424,17 +470,41 @@ where
         index: usize,
         aux: &Aux<B>,
     ) -> PrepareResult {
-        use vecmath::col_mat4_mul as mul;
-        unsafe {
-            let mvp = mul(mul(aux.projection, aux.camera), aux.model);
-            factory
-                .upload_visible_buffer(
-                    &mut self.buffer, 
-                    self.align*index as u64, 
-                    &[mvp]
-                )
-                .unwrap();
+        // The idea here is to allocate a large buffer to store each UniformData corresponding to the current state when a draw is needed in the FrameGraph
+        let frame_offset = self.frame_size * index as u64;
+        
+        // Define a macro to upload type variable uniforms
+        macro_rules! upload {
+            ($data:expr) => {
+                |_name: &String, uniform_offset: u64| {
+                    unsafe {
+                        factory
+                        .upload_visible_buffer(
+                            &mut self.buffer, 
+                            uniform_offset, 
+                            &[$data.clone()]
+                        )
+                        .unwrap();
+                    }
+                }
+            }
         };
+
+        // Upload each ubo according to the scheduled draw calls
+        for ubo in &aux.ubo_data.frame_data {
+            let frame_ubo_offset: u64 = frame_offset + (self.ubo_size * self.ubo_index_prep);
+            // Upload each ubo member
+            for uniform in ubo {
+                match uniform {
+                    UboType::Mat4 (u, n, o) => upload!(u)(n, frame_ubo_offset + o),
+                    UboType::Vec2 (u, n, o) => upload!(u)(n, frame_ubo_offset + o),
+                    UboType::Vec3 (u, n, o) => upload!(u)(n, frame_ubo_offset + o),
+                    UboType::Vec4 (u, n, o) => upload!(u)(n, frame_ubo_offset + o),
+                    UboType::Float(u, n, o) => upload!(u)(n, frame_ubo_offset + o),
+                };
+            }
+            self.ubo_index_prep = (self.ubo_index_prep + 1) % UBOS_PER_FRAME_SIZE;
+        }
 
         // Don't reuse drawing command buffers
         render::PrepareResult::DrawRecord
@@ -447,23 +517,30 @@ where
         index: usize,
         aux: &Aux<B>,
     ) {
-        // Bind uniform
-        unsafe {
-            encoder.bind_graphics_descriptor_sets(
-                layout, 
-                0, 
-                Some(self.sets[index].raw()), 
-                std::iter::empty()
-            );
-        };
+        for draw in &aux.draw_data {
+            let frame_offset = UBOS_PER_FRAME_SIZE as usize * index;
+            let frame_ubo_index: usize = frame_offset + self.ubo_index_draw;
 
-        // Bind vertex buffer
-        let vbuf = &aux.vertex_arrays[aux.bound_vertex_array].buffer;
-        vbuf
-            .as_ref()
-            .unwrap()
-            .bind_and_draw(0, &[PosColorTexNorm::vertex()], 0..1, &mut encoder)
-            .unwrap();
+            // Bind uniform
+            unsafe {
+                encoder.bind_graphics_descriptor_sets(
+                    layout, 
+                    0, 
+                    Some(self.sets[frame_ubo_index].raw()), 
+                    std::iter::empty()
+                );
+            };
+
+            // Bind vertex buffer
+            let vbuf = &aux.vertex_arrays[draw.mesh_index].buffer;
+            vbuf
+                .as_ref()
+                .unwrap()
+                .bind_and_draw(0, &[PosColorTexNorm::vertex()], 0..1, &mut encoder)
+                .unwrap();
+
+            self.ubo_index_draw = (self.ubo_index_draw + 1) % UBOS_PER_FRAME_SIZE as usize;
+        }
     }
 
     fn dispose(self, _factory: &mut Factory<B>, _aux: &Aux<B>) {}
@@ -550,27 +627,27 @@ impl Scene {
     }
 
     /// Set projection matrix.
-    pub fn set_projection(&mut self, p: Matrix4<f32>) {
+    pub fn projection(&mut self, p: Matrix4<f32>) {
         self.rendy_state.aux.projection = p;
     }
 
     /// Set camera matrix.
-    pub fn set_camera(&mut self, c: Matrix4<f32>) {
+    pub fn camera(&mut self, c: Matrix4<f32>) {
         self.rendy_state.aux.camera = c;
     }
 
     /// Set model matrix.
-    pub fn set_model(&mut self, m: Matrix4<f32>) {
+    pub fn model(&mut self, m: Matrix4<f32>) {
         self.rendy_state.aux.model = m;
     }
 
     /// Get the created window.
-    pub fn get_window(&mut self) -> &winit::Window {
+    pub fn raw_window(&mut self) -> &winit::Window {
         &self.rendy_state.window.get_window()
     }
 
-    /// asdf
-    pub fn get_window_wrapper(&mut self) -> &mut WinitWindow {
+    /// Get the wrapper that contains the window.
+    pub fn window(&mut self) -> &mut WinitWindow {
         &mut self.rendy_state.window
     }
 
@@ -633,7 +710,7 @@ impl Scene {
                 window_kind,
                 1,
                 self.rendy_state.factory.get_surface_format(&surface),
-                Some(hal::command::ClearValue::Color([0.1, 0.2, 0.3, 1.0].into())),
+                Some(hal::command::ClearValue::Color([0.0, 0.0, 0.0, 1.0].into())),
             );
 
             let depth = graph_builder.create_image(
@@ -653,7 +730,8 @@ impl Scene {
                     .into_pass()
             );
 
-            let present_builder = PresentNode::builder(&self.rendy_state.factory, surface, color).with_dependency(pass);
+            let present_builder = PresentNode::builder(&self.rendy_state.factory, surface, color)
+                .with_dependency(pass);
             let frames = present_builder.image_count();
 
             graph_builder.add_node(present_builder);
@@ -674,10 +752,10 @@ impl Scene {
         program: Program,
         name: &str,
     ) -> Result<Matrix4Uniform, String> {
-        let id = self.uniforms.len();
-        let _uniform = self.rendy_state.aux.shaders[program.0].get_uniform(name);
-        
-        //self.uniforms.push(uniform_location);
+        let id = self.rendy_state.aux.ubo_data.current_data.len();
+        let uniform = self.rendy_state.aux.shaders[program.0].get_uniform(name)?;
+        let m4 = UboType::Mat4(mat4_id(), uniform.name.clone(), uniform.offset as u64);
+        self.rendy_state.aux.ubo_data.current_data.push(m4);
         Ok(Matrix4Uniform(id))
     }
 
@@ -757,12 +835,16 @@ impl Scene {
     }
 
     /// Set model-view-projection transform uniform.
-    pub fn set_model_view_projection(&self, _matrix_id: Matrix4Uniform) {
+    pub fn set_model_view_projection(&mut self, matrix_id: Matrix4Uniform) {
         use vecmath::col_mat4_mul as mul;
-        let _mvp = mul(
+        let mvp = mul(
             mul(self.rendy_state.aux.projection, self.rendy_state.aux.camera), 
             self.rendy_state.aux.model
         );
+        match self.rendy_state.aux.ubo_data.current_data.get_mut(matrix_id.0) {
+            Some(UboType::Mat4(data, _, _)) => *data = mvp,
+            _ => panic!("The matrix uniform must exist before you set it as MVP")
+        }
     }
 
     /// Translate model.
@@ -882,20 +964,14 @@ impl Scene {
 
     /// Draws triangles.
     pub fn draw_triangles(&mut self, vertex_array: VertexArray, _len: usize) {
-        let index = self.rendy_state.aux.bound_shader;
-
         // Bind the vertex array for drawing
         self.rendy_state.aux.bound_vertex_array = vertex_array.0;
-
-        // Execute the draw
-        self.rendy_state.factory.maintain(&mut self.rendy_state.families);
-
-        // Shader binding is associated with the drawing graph
-        self.rendy_state.graphs[index].run(
-            &mut self.rendy_state.factory, 
-            &mut self.rendy_state.families, 
-            &self.rendy_state.aux
-        );
+        let mesh_index = vertex_array.0;
+        let ubo_index = self.rendy_state.aux.ubo_data.frame_data.len();
+        let fd = self.rendy_state.aux.ubo_data.current_data.clone();
+        // Push the state of ubo and mesh binding for later drawing
+        self.rendy_state.aux.ubo_data.frame_data.push(fd);
+        self.rendy_state.aux.draw_data.push(DrawData {mesh_index, ubo_index});
     }
 
     /// Executes commands in command list.
@@ -935,18 +1011,38 @@ impl Scene {
                 RotateAxisDeg(axis, deg) => self.rotate_axis_deg(axis, deg),
                 PushTransform => self.push_transform(),
                 PopTransform => self.pop_transform(),
-                Draw(command_list) => self.draw(command_list, frame_graph),
+                Draw(command_list) => self.draw_recursive(command_list, frame_graph),
                 _ => ()
             }
         }
     }
 
-    /// Draws a command list from frame graph.
-    pub fn draw(&mut self, command_list: CommandList, frame_graph: &FrameGraph) {
+    /// Use this for recursive draw calls, the main draw function executes all the draw commands for a whole frame!
+    fn draw_recursive(&mut self, command_list: CommandList, frame_graph: &FrameGraph) {
         self.submit(&frame_graph.command_lists[command_list.0], frame_graph)
     }
 
-    /// Drop trait does not move self, which is required
+    /// Draws a command list from frame graph.
+    pub fn draw(&mut self, command_list: CommandList, frame_graph: &FrameGraph) {
+        self.submit(&frame_graph.command_lists[command_list.0], frame_graph);
+        
+        // Execute the draw
+        let index = self.rendy_state.aux.bound_shader;
+        self.rendy_state.factory.maintain(&mut self.rendy_state.families);
+
+        // Shader binding is associated with the drawing graph
+        self.rendy_state.graphs[index].run(
+            &mut self.rendy_state.factory, 
+            &mut self.rendy_state.families, 
+            &self.rendy_state.aux
+        );
+        
+        // reset ubo draw state
+        self.rendy_state.aux.ubo_data.frame_data.clear();
+        self.rendy_state.aux.draw_data.clear();
+    }
+
+    /// Drop trait does not move self, which is required, so drop needs to be called explicitly
     pub fn drop(mut self) {
         for graph in self.rendy_state.graphs {
             graph.dispose(&mut self.rendy_state.factory, &self.rendy_state.aux);
