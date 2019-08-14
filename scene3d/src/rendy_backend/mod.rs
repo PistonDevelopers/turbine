@@ -19,14 +19,15 @@ use std::{
 };
 use self::rendy::{
     command::{RenderPassEncoder, QueueId},
-    factory::{Config, Factory},
-    graph::{render, GraphContext, NodeBuffer, NodeImage, GraphBuilder, present::PresentNode},
+    factory::{Config, Factory, ImageState},
+    graph::{render, Graph, GraphContext, NodeBuffer, NodeImage, GraphBuilder, BufferAccess, ImageAccess, present::PresentNode},
     hal::{self, PhysicalDevice, Device},
     resource::{DescriptorSet, Buffer, Escape, DescriptorSetLayout, Handle, BufferInfo},
     wsi::winit,
     mesh::{Position, Color, TexCoord, Normal, VertexFormat, Mesh},
     memory::{Dynamic},
-    shader
+    shader,
+    texture
 };
 use vecmath::*;
 use crate::*;
@@ -53,7 +54,28 @@ type Backend = rendy::metal::Backend;
 type Backend = rendy::vulkan::Backend;
 
 // Indicates how many UBOs can exist in a frame, necessary for dynamic uniforms during a draw
-const UBOS_PER_FRAME_SIZE: u64 = 2048;
+const UBOS_PER_FRAME_SIZE: u64 = 4;
+
+// Enums to index the different types of pipeline states the framegraph can swap through
+#[derive(Debug, Copy, Clone)]
+pub enum PipelineDrawMode {
+    Fill  = 0,
+    Line  = 1,
+    Point = 2,
+    Size  = 3,
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum PipelineCullMode {
+    Off       = 0,
+    Front     = 1,
+    Back      = 2,
+    FrontBack = 3,
+    Size      = 4,
+}
+
+#[allow(type_alias_bounds)]
+type PipelineModes<B: hal::Backend> = [[B::GraphicsPipeline; PipelineCullMode::Size as usize]; PipelineDrawMode::Size as usize];
 
 // Rendy doesn't implement this :)
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
@@ -87,6 +109,7 @@ where
 {
     pub buffer: Option<Mesh<B>>,
     pub vertices: Option<Vec<PosColorTexNorm>>,
+    pub uploaded: bool,
 }
 
 impl<B> VertexArrayData<B> 
@@ -96,7 +119,8 @@ where
     pub fn new() -> VertexArrayData<B> {
         VertexArrayData {
             buffer: None,
-            vertices: None
+            vertices: None,
+            uploaded: false
         }
     }
 
@@ -145,15 +169,17 @@ where
         let mut tex_chunks = data.chunks(2);
         for vertex in self.vertices.as_mut().unwrap() {
             let tex = tex_chunks.next().unwrap();
+            // DX12, Vulkan, and Metal all invert the U coordinate in comparison to OpenGL
+            // Handy charts: https://github.com/gfx-rs/gfx/tree/master/src/backend
             vertex.tex_coord = TexCoord([tex[0], tex[1]]);
         }
     }
 
     pub fn add_normals(&mut self, data: &[f32]) {
         if self.vertices.is_none() {
-            self.reset(data.len()/2)
+            self.reset(data.len()/3)
         }
-        let mut norm_chunks = data.chunks(2);
+        let mut norm_chunks = data.chunks(3);
         for vertex in self.vertices.as_mut().unwrap() {
             let norm = norm_chunks.next().unwrap();
             vertex.normal = Normal([norm[0], norm[1], norm[2]]);
@@ -161,7 +187,7 @@ where
     }
 
     pub fn upload_check(&mut self, factory: &Factory<B>, queue: QueueId) {
-        if self.vertices.is_none() {
+        if self.vertices.is_none() || self.uploaded {
             return
         }
         else {
@@ -171,6 +197,7 @@ where
                     .build(queue, &factory)
                     .unwrap()
             );
+            self.uploaded = true;
         }
     }
 }
@@ -293,17 +320,23 @@ pub struct Aux<B: hal::Backend> {
     /// Model transform.
     pub model: Matrix4<f32>,
     pub transform_stack: Vec<Matrix4<f32>>,
-    // Uniform data buffer
+    /// Uniform data buffer
     pub ubo_data: UboData,
     pub draw_data: Vec<DrawData>,
     pub frames: usize,
     pub align: u64,
-    // Pass shaders for pipeline creation
+    /// Pipeline state selectors
+    pub draw_mode: PipelineDrawMode,
+    pub cull_mode: PipelineCullMode,
+    /// Pass shaders for pipeline creation
     pub bound_shader: usize,
     pub shaders: Vec<ShaderData>,
-    // Active vertex for drawing
+    /// Active vertex for drawing
     pub bound_vertex_array: usize,
-    pub vertex_arrays: Vec<VertexArrayData<B>>
+    pub vertex_arrays: Vec<VertexArrayData<B>>,
+    /// Texture unit
+    pub bound_texture: usize,
+    pub textures: Vec<texture::Texture<B>>,
 }
 
 impl<B> Aux<B>
@@ -317,7 +350,10 @@ where
         let shaders = Vec::new();
         let bound_vertex_array: usize = 0;
         let vertex_arrays: Vec<VertexArrayData<B>> = Vec::new();
+        let bound_texture: usize = 0;
         let mat_id = mat4_id();
+        let draw_mode = PipelineDrawMode::Fill;
+        let cull_mode = PipelineCullMode::Off;
         Aux {
             projection: mat_id,
             camera: mat_id,
@@ -327,10 +363,14 @@ where
             draw_data: Vec::new(),
             frames,
             align,
+            draw_mode,
+            cull_mode,
             bound_shader,
             shaders,
             bound_vertex_array,
-            vertex_arrays
+            vertex_arrays,
+            bound_texture,
+            textures: Vec::new(),
         }
     }
 
@@ -359,18 +399,11 @@ where
     }
 
     fn layout(&self) -> render::Layout {
-        return Layout {
-            sets: vec![SetLayout {
-                bindings: vec![hal::pso::DescriptorSetLayoutBinding {
-                    binding: 0,
-                    ty: hal::pso::DescriptorType::UniformBuffer,
-                    count: 1,
-                    stage_flags: hal::pso::ShaderStageFlags::GRAPHICS,
-                    immutable_samplers: false,
-                }],
-            }],
+        // This is ignored for a reflection read in the render group
+        Layout {
+            sets: vec![],
             push_constants: Vec::new(),
-        };
+        }
     }
 
     fn load_shader_set(&self, factory: &mut Factory<B>, _aux: &Aux<B>) -> shader::ShaderSet<B> {
@@ -385,7 +418,7 @@ where
         ctx: &GraphContext<B>,
         factory: &mut Factory<B>,
         _queue: QueueId,
-        _aux: &Aux<B>,
+        aux: &Aux<B>,
         _buffers: Vec<NodeBuffer>,
         _images: Vec<NodeImage>,
         set_layouts: &[Handle<DescriptorSetLayout<B>>],
@@ -396,7 +429,7 @@ where
             .min_uniform_buffer_offset_alignment;
 
         // Size of the UBO for the attached shader
-        let ubo_size = (((size_of::<f32>() as u64 * 16) / align) + 1) * align;
+        let ubo_size = (((size_of::<f32>() as u64 * 53) / align) + 1) * align;
         let frame_size = ubo_size * UBOS_PER_FRAME_SIZE;
         let frames = ctx.frames_in_flight as u64;
 
@@ -433,13 +466,43 @@ where
             }
         }
 
+        let mut sampler_sets = Vec::new();
+        for texture in &aux.textures {
+            let set = factory
+                .create_descriptor_set(set_layouts[1].clone())
+                .unwrap();
+            unsafe {
+                factory.device().write_descriptor_sets(Some(
+                    hal::pso::DescriptorSetWrite {
+                        set: set.raw(),
+                        binding: 0,
+                        array_offset: 0,
+                        descriptors: vec![hal::pso::Descriptor::CombinedImageSampler(
+                            texture.view().raw(),
+                            hal::image::Layout::ShaderReadOnlyOptimal,
+                            texture.sampler().raw()
+                        )],
+                    }
+                ));
+            }
+            sampler_sets.push(set); // NOW SAVE BINDING IN SCENE FUNCTION TO APPLY THIS SET
+        }
+
         // Buffer is arranged in three levels as such:
         // Frames(3) [
         //     Ubos(2048) [
         //         Ubo { .. }, ..
         //     ], ..
         // ]
-        Ok(RendyPipeline{ frame_size, ubo_size, ubo_index_prep: 0, ubo_index_draw: 0, buffer, sets })
+        Ok(RendyPipeline {
+            frame_size, 
+            ubo_size, 
+            ubo_index_prep: 0, 
+            ubo_index_draw: 0, 
+            buffer, 
+            sets,
+            sampler_sets
+        })
     }
 }
 
@@ -453,6 +516,7 @@ struct RendyPipeline<B: hal::Backend> {
     ubo_index_draw: usize,
     buffer: Escape<Buffer<B>>,
     sets: Vec<Escape<DescriptorSet<B>>>,
+    sampler_sets: Vec<Escape<DescriptorSet<B>>>,
 }
 
 impl<B> render::SimpleGraphicsPipeline<B, Aux<B>> for RendyPipeline<B>
@@ -521,22 +585,24 @@ where
             let frame_offset = UBOS_PER_FRAME_SIZE as usize * index;
             let frame_ubo_index: usize = frame_offset + self.ubo_index_draw;
 
-            // Bind uniform
+            // Bind uniform and sampler
+            let mut bindings = vec![self.sets[frame_ubo_index].raw()];
+            if aux.textures.len() > 0 {
+                bindings.push(self.sampler_sets[aux.bound_texture].raw());
+            }
             unsafe {
                 encoder.bind_graphics_descriptor_sets(
                     layout, 
                     0, 
-                    Some(self.sets[frame_ubo_index].raw()), 
+                    bindings, 
                     std::iter::empty()
                 );
             };
 
             // Bind vertex buffer
             let vbuf = &aux.vertex_arrays[draw.mesh_index].buffer;
-            vbuf
-                .as_ref()
-                .unwrap()
-                .bind_and_draw(0, &[PosColorTexNorm::vertex()], 0..1, &mut encoder)
+            let vref = vbuf.as_ref().unwrap();
+            vref.bind_and_draw(0, &[PosColorTexNorm::vertex()], 0..1, &mut encoder)
                 .unwrap();
 
             self.ubo_index_draw = (self.ubo_index_draw + 1) % UBOS_PER_FRAME_SIZE as usize;
@@ -546,6 +612,363 @@ where
     fn dispose(self, _factory: &mut Factory<B>, _aux: &Aux<B>) {}
 }
 
+// https://github.com/amethyst/rendy/blob/master/graph/src/node/render/group/simple.rs#L396
+fn push_vertex_desc(
+    elements: &[hal::pso::Element<hal::format::Format>],
+    stride: hal::pso::ElemStride,
+    rate: hal::pso::VertexInputRate,
+    vertex_buffers: &mut Vec<hal::pso::VertexBufferDesc>,
+    attributes: &mut Vec<hal::pso::AttributeDesc>,
+) {
+    let index = vertex_buffers.len() as hal::pso::BufferIndex;
+
+    vertex_buffers.push(hal::pso::VertexBufferDesc {
+        binding: index,
+        stride,
+        rate,
+    });
+
+    let mut location = attributes.last().map_or(0, |a| a.location + 1);
+    for &element in elements {
+        attributes.push(hal::pso::AttributeDesc {
+            location,
+            binding: index,
+            element,
+        });
+        location += 1;
+    }
+}
+
+// Implement RenderGroup* to expose GraphicsPipelineDesc
+
+#[derive(Debug)]
+struct RendyGroupDesc<P: std::fmt::Debug> {
+    inner: P
+}
+
+impl RendyGroupDesc<RendyPipelineDesc> {
+    pub fn new() -> Self {
+        Self { inner: RendyPipelineDesc{} }
+    }
+}
+
+impl<B, T, P> RenderGroupDesc<B, T> for RendyGroupDesc<P>
+where
+    B: hal::Backend,
+    T: Sized,
+    P: SimpleGraphicsPipelineDesc<B, T>,
+{
+    fn buffers(&self) -> Vec<BufferAccess> {
+        self.inner.buffers()
+    }
+
+    fn images(&self) -> Vec<ImageAccess> {
+        self.inner.images()
+    }
+
+    fn colors(&self) -> usize {
+        self.inner.colors().len()
+    }
+
+    fn depth(&self) -> bool {
+        self.inner.depth_stencil().is_some()
+    }
+
+    fn build<'a>(
+        self,
+        ctx: &GraphContext<B>,
+        factory: &mut Factory<B>,
+        queue: QueueId,
+        aux: &T,
+        framebuffer_width: u32,
+        framebuffer_height: u32,
+        subpass: hal::pass::Subpass<'_, B>,
+        buffers: Vec<NodeBuffer>,
+        images: Vec<NodeImage>,
+    ) -> Result<Box<dyn RenderGroup<B, T>>, failure::Error> {
+        let mut shader_set = self.inner.load_shader_set(factory, aux);
+
+        let pipeline = self.inner.pipeline();
+
+        // Ignore the layout in the pipeline, use the reflection in aux
+        let set_layouts = unsafe {
+            use std::mem::transmute;
+            // reinterpret_cast T to Aux
+            let x: &Aux<B> = transmute(aux);
+            let layout = match x.shaders.get(x.bound_shader) {
+                Some(shader) => shader.reflection.layout().unwrap(),
+                None => panic!("Bound shader cannot be built because it does not exist")
+            };
+            layout
+                .sets
+                .into_iter()
+                .map(|set| {
+                    factory.create_descriptor_set_layout(set.bindings).map(Handle::from)
+                })
+                .collect::<Result<Vec<_>, _>>()
+                .map_err(|e| {
+                    shader_set.dispose(factory);
+                    e
+                })?
+        };
+
+        let pipeline_layout = unsafe {
+            factory.device().create_pipeline_layout(
+                set_layouts.iter().map(|l| l.raw()),
+                pipeline.layout.push_constants,
+            )
+        }
+        .map_err(|e| {
+            shader_set.dispose(factory);
+            e
+        })?;
+
+        assert_eq!(pipeline.colors.len(), self.inner.colors().len());
+
+        let mut vertex_buffers = Vec::new();
+        let mut attributes = Vec::new();
+
+        for &(ref elemets, stride, rate) in &pipeline.vertices {
+            push_vertex_desc(elemets, stride, rate, &mut vertex_buffers, &mut attributes);
+        }
+
+        // Invert Y axis to match OpenGL's NDC space
+        // Handy charts: https://github.com/gfx-rs/gfx/tree/master/src/backend
+        #[cfg(feature = "vulkan")]
+        let viewport = hal::pso::Rect {
+            x: 0,
+            y: framebuffer_height as i16,
+            w: framebuffer_width as i16,
+            h: -(framebuffer_height as i16),
+        };
+
+        // DX12 and Metal both have the same NDC space as OpenGL
+        #[cfg(any(feature = "dx12", feature = "metal"))]
+        let viewport = hal::pso::Rect {
+            x: 0,
+            y: 0,
+            w: framebuffer_width as i16,
+            h: framebuffer_height as i16,
+        };
+
+        let scissor = hal::pso::Rect {
+            x: 0,
+            y: 0,
+            w: framebuffer_width as i16,
+            h: framebuffer_height as i16,
+        };
+
+        let shaders = match shader_set.raw() {
+            Err(e) => {
+                shader_set.dispose(factory);
+                return Err(e);
+            }
+            Ok(s) => s,
+        };
+
+        // https://vulkan-tutorial.com/Multisampling#page_Getting-available-sample-count
+        let limits = factory.physical().limits();
+        let sample_count: u8 = {
+            let counts = std::cmp::min(
+                limits.framebuffer_color_samples_count,
+                limits.framebuffer_depth_samples_count
+            );
+            let mut samples = 1;
+            if (counts & 64) > 0 { samples = 64; }
+            if (counts & 32) > 0 { samples = 32; }
+            if (counts & 16) > 0 { samples = 16; }
+            if (counts &  8) > 0 { samples =  8; }
+            if (counts &  4) > 0 { samples =  4; }
+            if (counts &  2) > 0 { samples =  2; }
+            samples
+        };
+
+        // This doesn't work as of gfx-hal 0.21
+        let _multisampling = hal::pso::Multisampling {
+            rasterization_samples: sample_count,
+            sample_shading: None,
+            sample_mask: !0,
+            alpha_coverage: false,
+            alpha_to_one: false
+        };
+
+        let mut gp_desc = hal::pso::GraphicsPipelineDesc {
+            shaders,
+            rasterizer: hal::pso::Rasterizer::FILL,
+            vertex_buffers,
+            attributes,
+            input_assembler: pipeline.input_assembler_desc,
+            blender: hal::pso::BlendDesc {
+                logic_op: None,
+                targets: pipeline.colors.clone(),
+            },
+            depth_stencil: pipeline.depth_stencil,
+            multisampling: None,
+            baked_states: hal::pso::BakedStates {
+                viewport: Some(hal::pso::Viewport {
+                    rect: viewport,
+                    depth: 0.0..1.0,
+                }),
+                scissor: Some(scissor),
+                blend_color: None,
+                depth_bounds: None,
+            },
+            layout: &pipeline_layout,
+            subpass,
+            flags: hal::pso::PipelineCreationFlags::ALLOW_DERIVATIVES,
+            parent: hal::pso::BasePipeline::None,
+        };
+
+        let rast_fill = hal::pso::Rasterizer {
+            polygon_mode: hal::pso::PolygonMode::Fill,
+            cull_face: hal::pso::Face::NONE,
+            front_face: hal::pso::FrontFace::CounterClockwise,
+            depth_clamping: false,
+            depth_bias: None,
+            conservative: false,
+        };
+
+        let rast_line = hal::pso::Rasterizer {
+            polygon_mode: hal::pso::PolygonMode::Line(1.0),
+            cull_face: hal::pso::Face::NONE,
+            front_face: hal::pso::FrontFace::CounterClockwise,
+            depth_clamping: false,
+            depth_bias: None,
+            conservative: false,
+        };
+
+        let rast_point = hal::pso::Rasterizer {
+            polygon_mode: hal::pso::PolygonMode::Point,
+            cull_face: hal::pso::Face::NONE,
+            front_face: hal::pso::FrontFace::CounterClockwise,
+            depth_clamping: false,
+            depth_bias: None,
+            conservative: false,
+        };
+
+        // Establish the base pipeline
+        let gp_base = unsafe {
+            factory.device().create_graphics_pipeline(&gp_desc, None)
+        }?;
+
+        macro_rules! set_culls {
+            ($rast:ident) => {
+                {
+                    // Setup derivative pipelines
+                    gp_desc.parent = hal::pso::BasePipeline::Pipeline(&gp_base);
+                    gp_desc.rasterizer = $rast;
+                    gp_desc.rasterizer.cull_face = hal::pso::Face::NONE;
+                    let gp_cull_none = unsafe {
+                        factory.device().create_graphics_pipeline(&gp_desc, None)
+                    }?;
+                    gp_desc.rasterizer.cull_face = hal::pso::Face::FRONT;
+                    let gp_cull_front = unsafe {
+                        factory.device().create_graphics_pipeline(&gp_desc, None)
+                    }?;
+                    gp_desc.rasterizer.cull_face = hal::pso::Face::BACK;
+                    let gp_cull_back = unsafe {
+                        factory.device().create_graphics_pipeline(&gp_desc, None)
+                    }?;
+                    gp_desc.rasterizer.cull_face = hal::pso::Face::FRONT;
+                    let gp_cull_front_back = unsafe {
+                        factory.device().create_graphics_pipeline(&gp_desc, None)
+                    }?;
+                    [gp_cull_none, gp_cull_front, gp_cull_back, gp_cull_front_back]
+                }
+            };
+        }
+
+        let fill_culls = set_culls!(rast_fill);
+        let line_culls = set_culls!(rast_line);
+        let point_culls = set_culls!(rast_point);
+        let graphics_pipelines = [fill_culls, line_culls, point_culls];
+
+        let parents = vec![gp_base];
+
+        let pipeline = self
+            .inner
+            .build(ctx, factory, queue, aux, buffers, images, &set_layouts)
+            .map_err(|e| {
+                shader_set.dispose(factory);
+                e
+            })?;
+
+        shader_set.dispose(factory);
+
+        Ok(Box::new(RendyGroup::<B, _> {
+            set_layouts,
+            pipeline_layout,
+            parents,
+            graphics_pipelines,
+            pipeline,
+        }))
+    }
+}
+
+#[derive(Debug)]
+struct RendyGroup<B: hal::Backend, P> {
+    set_layouts: Vec<Handle<DescriptorSetLayout<B>>>,
+    pipeline_layout: B::PipelineLayout,
+    parents: Vec<B::GraphicsPipeline>,
+    graphics_pipelines: PipelineModes<B>,
+    pipeline: P,
+}
+
+impl<B, T, P> RenderGroup<B, T> for RendyGroup<B, P>
+where
+    B: hal::Backend,
+    T: Sized,
+    P: SimpleGraphicsPipeline<B, T>,
+{
+    fn prepare(
+        &mut self,
+        factory: &Factory<B>,
+        queue: QueueId,
+        index: usize,
+        _subpass: hal::pass::Subpass<'_, B>,
+        aux: &T,
+    ) -> PrepareResult {
+        self.pipeline.prepare(factory, queue, &self.set_layouts, index, aux)
+    }
+
+    fn draw_inline(
+        &mut self,
+        mut encoder: RenderPassEncoder<'_, B>,
+        index: usize,
+        _subpass: hal::pass::Subpass<'_, B>,
+        aux: &T,
+    ) {
+        use std::mem::transmute;
+        let (draw_mode, cull_mode) = unsafe {
+            // reinterpret_cast T to Aux to access draw_mode and cull_mode
+            let x: &Aux<B> = transmute(aux);
+            (x.draw_mode as usize, x.cull_mode as usize)
+        };
+        encoder.bind_graphics_pipeline(&self.graphics_pipelines[draw_mode][cull_mode]);
+        self.pipeline.draw(&self.pipeline_layout, encoder, index, aux);
+    }
+
+    fn dispose(self: Box<Self>, factory: &mut Factory<B>, aux: &T) {
+        use std::ptr::{read};
+        self.pipeline.dispose(factory, aux);
+
+        for i in 0..self.graphics_pipelines.len() {
+            for j in 0..self.graphics_pipelines[i].len() {
+                unsafe {
+                    factory.device().destroy_graphics_pipeline(
+                        read(&self.graphics_pipelines[i][j])
+                    );
+                }
+            }
+        }
+
+        unsafe {
+            factory.device().destroy_pipeline_layout(self.pipeline_layout);
+            drop(self.set_layouts);
+        }
+    }
+}
+
 struct RendyState<B>
 where
     B: hal::Backend
@@ -553,7 +976,7 @@ where
     // winit types
     pub window: WinitWindow,
     // Rendy types
-    pub graphs: Vec<rendy::graph::Graph<B, Aux<B>>>,
+    pub graph: Option<rendy::graph::Graph<B, Aux<B>>>,
     pub aux: Aux<B>,
     pub pipelines: Vec<RendyPipeline<B>>,
     // Device
@@ -582,11 +1005,11 @@ where
 
         let aux = Aux::new();
         let pipelines: Vec<RendyPipeline<B>> = Vec::new();
-        let graphs = Vec::new();
+        let graph = None;
 
         RendyState {
             window,
-            graphs,
+            graph,
             aux,
             pipelines,
             factory,
@@ -601,11 +1024,9 @@ pub struct Scene {
     /// Scene settings.
     pub settings: SceneSettings,
     shaders: Vec<*const str>,
-    programs: Vec<gl::types::GLuint>,
-    uniforms: Vec<gl::types::GLuint>,
-    vertex_arrays: Vec<gl::types::GLuint>,
-    buffers: Vec<gl::types::GLuint>,
-    textures: Vec<gl::types::GLuint>,
+    // if culling is disabled, save current state for when its enabled
+    saved_cull_mode: PipelineCullMode,
+    graph_built: bool,
     rendy_state: RendyState<Backend>
 }
 
@@ -617,11 +1038,8 @@ impl Scene {
         Scene {
             settings,
             shaders: vec![],
-            programs: vec![],
-            uniforms: vec![],
-            vertex_arrays: vec![],
-            buffers: vec![],
-            textures: vec![],
+            saved_cull_mode: PipelineCullMode::Off,
+            graph_built: false,
             rendy_state,
         }
     }
@@ -654,9 +1072,21 @@ impl Scene {
     /// Load texture from path.
     pub fn load_texture<P: AsRef<Path>>(&mut self, path: P) -> Result<Texture, image::ImageError> {
         let image_reader = BufReader::new(File::open(path)?);
-        let _texture_builder = rendy::texture::image::load_from_image(image_reader, Default::default()).unwrap();
-        
-        Ok(Texture(0))
+        let texture_builder = rendy::texture::image::load_from_image(image_reader, Default::default()).unwrap();
+        let texture = texture_builder
+            .build(
+                ImageState {
+                    queue: self.rendy_state.queue_id,
+                    stage: hal::pso::PipelineStage::FRAGMENT_SHADER,
+                    access: hal::image::Access::SHADER_READ,
+                    layout: hal::image::Layout::ShaderReadOnlyOptimal,
+                },
+                &mut self.rendy_state.factory
+            )
+            .unwrap();
+        let id = self.rendy_state.aux.textures.len();
+        self.rendy_state.aux.textures.push(texture);
+        Ok(Texture(id))
     }
 
     /// Create vertex shader from source.
@@ -687,62 +1117,13 @@ impl Scene {
     ) -> Program {
         // This should implement a graphics pipeline
         // shader and a pipeline are 1:1
-        let id = self.programs.len();
+        let id = self.rendy_state.aux.shaders.len();
         unsafe {
             self.rendy_state.aux.push_program(
                 &*self.shaders[vertex_shader.0],
                 &*self.shaders[fragment_shader.0]
             );
         };
-
-        // For now each pipeline is going to be a graph of its own, probably not ideal
-        let surface = self.rendy_state.factory.create_surface(self.rendy_state.window.get_window());
-        let graph = {
-            let mut graph_builder = GraphBuilder::<Backend, Aux<Backend>>::new();
-
-            let size = self.rendy_state.window.get_window()
-                .get_inner_size()
-                .unwrap()
-                .to_physical(self.rendy_state.window.get_window().get_hidpi_factor());
-            let window_kind = hal::image::Kind::D2(size.width as u32, size.height as u32, 1, 1);
-
-            let color = graph_builder.create_image(
-                window_kind,
-                1,
-                self.rendy_state.factory.get_surface_format(&surface),
-                Some(hal::command::ClearValue::Color([0.0, 0.0, 0.0, 1.0].into())),
-            );
-
-            let depth = graph_builder.create_image(
-                window_kind,
-                1,
-                hal::format::Format::D16Unorm,
-                Some(hal::command::ClearValue::DepthStencil(
-                    hal::command::ClearDepthStencil(1.0, 0),
-                )),
-            );
-
-            let pass = graph_builder.add_node(
-                RendyPipeline::builder()
-                    .into_subpass()
-                    .with_color(color)
-                    .with_depth_stencil(depth)
-                    .into_pass()
-            );
-
-            let present_builder = PresentNode::builder(&self.rendy_state.factory, surface, color)
-                .with_dependency(pass);
-            let frames = present_builder.image_count();
-
-            graph_builder.add_node(present_builder);
-            graph_builder
-                .with_frames_in_flight(frames)
-                .build(&mut self.rendy_state.factory, &mut self.rendy_state.families, &self.rendy_state.aux)
-                .unwrap()
-        };
-
-        self.rendy_state.graphs.push(graph);
-
         Program(id)
     }
 
@@ -757,6 +1138,48 @@ impl Scene {
         let m4 = UboType::Mat4(mat4_id(), uniform.name.clone(), uniform.offset as u64);
         self.rendy_state.aux.ubo_data.current_data.push(m4);
         Ok(Matrix4Uniform(id))
+    }
+
+    /// Create 2D vector uniform.
+    pub fn vector2_uniform(
+        &mut self,
+        program: Program,
+        name: &str
+    ) -> Result<Vector2Uniform, String> {
+        let id = self.rendy_state.aux.ubo_data.current_data.len();
+        let uniform = self.rendy_state.aux.shaders[program.0].get_uniform(name)?;
+        let zero: f32 = 0.0;
+        let v2 = UboType::Vec2([zero, zero], uniform.name.clone(), uniform.offset as u64);
+        self.rendy_state.aux.ubo_data.current_data.push(v2);
+        Ok(Vector2Uniform(id))
+    }
+
+    /// Create 3D vector uniform.
+    pub fn vector3_uniform(
+        &mut self,
+        program: Program,
+        name: &str
+    ) -> Result<Vector3Uniform, String> {
+        let id = self.rendy_state.aux.ubo_data.current_data.len();
+        let uniform = self.rendy_state.aux.shaders[program.0].get_uniform(name)?;
+        let zero: f32 = 0.0;
+        let v3 = UboType::Vec3([zero, zero, zero], uniform.name.clone(), uniform.offset as u64);
+        self.rendy_state.aux.ubo_data.current_data.push(v3);
+        Ok(Vector3Uniform(id))
+    }
+
+    /// Create f32 uniform.
+    pub fn f32_uniform(
+        &mut self,
+        program: Program,
+        name: &str
+    ) -> Result<F32Uniform, String> {
+        let id = self.rendy_state.aux.ubo_data.current_data.len();
+        let uniform = self.rendy_state.aux.shaders[program.0].get_uniform(name)?;
+        let zero: f32 = 0.0;
+        let f = UboType::Float(zero, uniform.name.clone(), uniform.offset as u64);
+        self.rendy_state.aux.ubo_data.current_data.push(f);
+        Ok(F32Uniform(id))
     }
 
     /// Create vertex array.
@@ -787,7 +1210,6 @@ impl Scene {
     ) -> ColorBuffer {
         let id = vertex_array.0;
         self.rendy_state.aux.vertex_arrays[id].add_colors(data);
-        self.rendy_state.aux.vertex_arrays[id].upload_check(&self.rendy_state.factory, self.rendy_state.queue_id);
         ColorBuffer(id, 0)
     }
 
@@ -845,6 +1267,59 @@ impl Scene {
             Some(UboType::Mat4(data, _, _)) => *data = mvp,
             _ => panic!("The matrix uniform must exist before you set it as MVP")
         }
+    }
+
+    /// Set view transform uniform.
+    pub fn set_view(&mut self, matrix_id: Matrix4Uniform) {
+        match self.rendy_state.aux.ubo_data.current_data.get_mut(matrix_id.0) {
+            Some(UboType::Mat4(data, _, _)) => *data = self.rendy_state.aux.camera,
+            _ => panic!("The matrix uniform must exist before you set it as view")
+        }
+    }
+
+    /// Set model transform uniform.
+    pub fn set_model(&mut self, matrix_id: Matrix4Uniform) {
+        match self.rendy_state.aux.ubo_data.current_data.get_mut(matrix_id.0) {
+            Some(UboType::Mat4(data, _, _)) => *data = self.rendy_state.aux.model,
+            _ => panic!("The matrix uniform must exist before you set it as model")
+        }
+    }
+
+    /// Set matrix uniform.
+    pub fn set_matrix4(&mut self, matrix_id: Matrix4Uniform, val: Matrix4<f32>) {
+        match self.rendy_state.aux.ubo_data.current_data.get_mut(matrix_id.0) {
+            Some(UboType::Mat4(data, _, _)) => *data = val,
+            _ => panic!("The Matrix4Uniform does not exist")
+        }
+    }
+
+    /// Set 2D vector uniform.
+    pub fn set_vector2(&mut self, v_id: Vector2Uniform, v: Vector2<f32>) {
+        match self.rendy_state.aux.ubo_data.current_data.get_mut(v_id.0) {
+            Some(UboType::Vec2(data, _, _)) => *data = v,
+            _ => panic!("The Vector2Uniform does not exist")
+        }
+    }
+
+    /// Set 3D vector uniform.
+    pub fn set_vector3(&mut self, v_id: Vector3Uniform, v: Vector3<f32>) {
+        match self.rendy_state.aux.ubo_data.current_data.get_mut(v_id.0) {
+            Some(UboType::Vec3(data, _, _)) => *data = v,
+            _ => panic!("The Vector2Uniform does not exist")
+        }
+    }
+
+    /// Set f32 uniform.
+    pub fn set_f32(&mut self, f_id: F32Uniform, v: f32) {
+        match self.rendy_state.aux.ubo_data.current_data.get_mut(f_id.0) {
+            Some(UboType::Float(data, _, _)) => *data = v,
+            _ => panic!("The Vector2Uniform does not exist")
+        }
+    }
+
+    /// Set texture.
+    pub fn set_texture(&mut self, texture_id: Texture) {
+        self.rendy_state.aux.bound_texture = texture_id.0;
     }
 
     /// Translate model.
@@ -962,8 +1437,64 @@ impl Scene {
     /// Clear background with color.
     pub fn clear(&self, _bg_color: [f32; 4]) {}
 
+    /// Enable cull face.
+    pub fn enable_cull_face(&mut self) {
+        self.rendy_state.aux.cull_mode = self.saved_cull_mode;
+    }
+
+    /// Disable cull face.
+    pub fn disable_cull_face(&mut self) {
+        self.saved_cull_mode = self.rendy_state.aux.cull_mode;
+        self.rendy_state.aux.cull_mode = PipelineCullMode::Off;
+    }
+
+    /// Cull front face.
+    pub fn cull_face_front(&mut self) {
+        self.rendy_state.aux.cull_mode = PipelineCullMode::Front;
+    }
+
+    /// Cull back face.
+    pub fn cull_face_back(&mut self) {
+        self.rendy_state.aux.cull_mode = PipelineCullMode::Back;
+    }
+
+    /// Cull both front and back face.
+    pub fn cull_face_front_and_back(&mut self) {
+        self.rendy_state.aux.cull_mode = PipelineCullMode::FrontBack;
+    }
+
     /// Draws triangles.
     pub fn draw_triangles(&mut self, vertex_array: VertexArray, _len: usize) {
+        // Set the correct pipeline mode
+        self.rendy_state.aux.draw_mode = PipelineDrawMode::Fill;
+        // Bind the vertex array for drawing
+        self.rendy_state.aux.bound_vertex_array = vertex_array.0;
+        let mesh_index = vertex_array.0;
+        let ubo_index = self.rendy_state.aux.ubo_data.frame_data.len();
+        let fd = self.rendy_state.aux.ubo_data.current_data.clone();
+        // Push the state of ubo and mesh binding for later drawing
+        self.rendy_state.aux.ubo_data.frame_data.push(fd);
+        self.rendy_state.aux.draw_data.push(DrawData {mesh_index, ubo_index});
+    }
+
+    /// Draws triangles.
+    pub fn draw_lines(&mut self, vertex_array: VertexArray, _len: usize) {
+        // Set the correct pipeline mode
+        self.rendy_state.aux.draw_mode = PipelineDrawMode::Line;
+        // Bind the vertex array for drawing
+        self.rendy_state.aux.bound_vertex_array = vertex_array.0;
+        let mesh_index = vertex_array.0;
+        let ubo_index = self.rendy_state.aux.ubo_data.frame_data.len();
+        let fd = self.rendy_state.aux.ubo_data.current_data.clone();
+        // Push the state of ubo and mesh binding for later drawing
+        self.rendy_state.aux.ubo_data.frame_data.push(fd);
+        self.rendy_state.aux.draw_data.push(DrawData {mesh_index, ubo_index});
+    }
+
+    /// Draws triangles.
+    pub fn draw_points(&mut self, vertex_array: VertexArray, _len: usize) {
+        // Set the correct pipeline mode
+        self.rendy_state.aux.draw_mode = PipelineDrawMode::Point;
         // Bind the vertex array for drawing
         self.rendy_state.aux.bound_vertex_array = vertex_array.0;
         let mesh_index = vertex_array.0;
@@ -982,26 +1513,26 @@ impl Scene {
             match *command {
                 UseProgram(program) => self.use_program(program),
                 SetModelViewProjection(mvp) => self.set_model_view_projection(mvp),
-                //SetModel(model) => self.set_model(model),
-                //SetView(view) => self.set_view(view),
-                //SetTexture(texture) => self.set_texture(texture),
-                //SetF32(uni, val) => self.set_f32(uni, val),
-                //SetVector2(uni, val) => self.set_vector2(uni, val),
-                //SetVector3(uni, val) => self.set_vector3(uni, val),
-                //SetMatrix4(uni, val) => self.set_matrix4(uni, val),
-                //EnableFrameBufferSRGB => self.enable_framebuffer_srgb(),
-                //DisableFrameBufferSRGB => self.disable_framebuffer_srgb(),
-                //EnableBlend => self.enable_blend(),
-                //DisableBlend => self.disable_blend(),
-                //EnableCullFace => self.enable_cull_face(),
-                //DisableCullFace => self.disable_cull_face(),
-                //CullFaceFront => self.cull_face_front(),
-                //CullFaceBack => self.cull_face_back(),
-                //CullFaceFrontAndBack => self.cull_face_front_and_back(),
+                SetModel(model) => self.set_model(model),
+                SetView(view) => self.set_view(view),
+                SetTexture(texture) => self.set_texture(texture),
+                SetF32(uni, val) => self.set_f32(uni, val),
+                SetVector2(uni, val) => self.set_vector2(uni, val),
+                SetVector3(uni, val) => self.set_vector3(uni, val),
+                SetMatrix4(uni, val) => self.set_matrix4(uni, val),
+                //EnableFrameBufferSRGB => self.enable_framebuffer_srgb(), //-not simple
+                //DisableFrameBufferSRGB => self.disable_framebuffer_srgb(), // not simple
+                //EnableBlend => self.enable_blend(), //-simple w/ gfx_hal::command::RawCommandBuffer::set_scissors(self.raw, first_scissor, rects)
+                //DisableBlend => self.disable_blend(), // simple
+                EnableCullFace => self.enable_cull_face(),
+                DisableCullFace => self.disable_cull_face(),
+                CullFaceFront => self.cull_face_front(),
+                CullFaceBack => self.cull_face_back(),
+                CullFaceFrontAndBack => self.cull_face_front_and_back(),
                 DrawTriangles(vertex_array, len) => self.draw_triangles(vertex_array, len),
-                //DrawTriangleStrip(vertex_array, len) => self.draw_triangle_strip(vertex_array, len),
-                //DrawLines(vertex_array, len) => self.draw_lines(vertex_array, len),
-                //DrawPoints(vertex_array, len) => self.draw_points(vertex_array, len),
+                DrawTriangleStrip(vertex_array, len) => self.draw_triangles(vertex_array, len), // directs to normal triangles for the moment
+                DrawLines(vertex_array, len) => self.draw_lines(vertex_array, len),
+                DrawPoints(vertex_array, len) => self.draw_points(vertex_array, len),
                 Translate(v) => self.translate(v),
                 TranslateGlobal(v) => self.translate_global(v),
                 Scale(v) => self.scale(v),
@@ -1022,16 +1553,72 @@ impl Scene {
         self.submit(&frame_graph.command_lists[command_list.0], frame_graph)
     }
 
+    fn build_graph(&mut self) -> Graph<Backend, Aux<Backend>> {
+        let surface = self.rendy_state.factory.create_surface(self.rendy_state.window.get_window());
+        let mut graph_builder = GraphBuilder::<Backend, Aux<Backend>>::new();
+
+        let size = self.rendy_state.window.get_window()
+            .get_inner_size()
+            .unwrap()
+            .to_physical(self.rendy_state.window.get_window().get_hidpi_factor());
+        let window_kind = hal::image::Kind::D2(size.width as u32, size.height as u32, 1, 1);
+
+        let color = graph_builder.create_image(
+            window_kind,
+            1,
+            self.rendy_state.factory.get_surface_format(&surface),
+            Some(hal::command::ClearValue::Color([0.0, 0.0, 0.0, 1.0].into())),
+        );
+
+        let depth = graph_builder.create_image(
+            window_kind,
+            1,
+            hal::format::Format::D16Unorm,
+            Some(hal::command::ClearValue::DepthStencil(
+                hal::command::ClearDepthStencil(1.0, 0),
+            )),
+        );
+
+        let render_group_desc = RendyGroupDesc::new();
+        let pass = graph_builder.add_node(
+            render_group_desc.builder()
+                .into_subpass()
+                .with_color(color)
+                .with_depth_stencil(depth)
+                .into_pass()
+        );
+
+        let present_builder = PresentNode::builder(&self.rendy_state.factory, surface, color)
+            .with_dependency(pass);
+        let frames = present_builder.image_count();
+
+        graph_builder.add_node(present_builder);
+        graph_builder
+            .with_frames_in_flight(frames)
+            .build(&mut self.rendy_state.factory, &mut self.rendy_state.families, &self.rendy_state.aux)
+            .unwrap()
+    }
+
     /// Draws a command list from frame graph.
     pub fn draw(&mut self, command_list: CommandList, frame_graph: &FrameGraph) {
         self.submit(&frame_graph.command_lists[command_list.0], frame_graph);
+
+        // check if all the meshes have uploaded
+        for mesh in &mut self.rendy_state.aux.vertex_arrays {
+            mesh.upload_check(&self.rendy_state.factory, self.rendy_state.queue_id);
+        }
+
+        // build the graph
+        if !self.graph_built {
+            self.rendy_state.graph = Some(self.build_graph());
+            self.graph_built = true;
+        }
         
         // Execute the draw
-        let index = self.rendy_state.aux.bound_shader;
         self.rendy_state.factory.maintain(&mut self.rendy_state.families);
 
         // Shader binding is associated with the drawing graph
-        self.rendy_state.graphs[index].run(
+        self.rendy_state.graph.as_mut().unwrap().run(
             &mut self.rendy_state.factory, 
             &mut self.rendy_state.families, 
             &self.rendy_state.aux
@@ -1044,11 +1631,6 @@ impl Scene {
 
     /// Drop trait does not move self, which is required, so drop needs to be called explicitly
     pub fn drop(mut self) {
-        for graph in self.rendy_state.graphs {
-            graph.dispose(&mut self.rendy_state.factory, &self.rendy_state.aux);
-        }
-
-        drop(self.rendy_state.families);
-        drop(self.rendy_state.factory);
+        self.rendy_state.graph.unwrap().dispose(&mut self.rendy_state.factory, &self.rendy_state.aux);
     }
 }

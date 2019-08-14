@@ -14,7 +14,5 @@ layout(location = 0) out vec4 fragmentColor;
 
 void main() {
     gl_Position = MVP * vec4(vertexPosition_modelspace, 1);
-    // Flipping Y-axis to correct Vulkan viewport axis (do this correctly in rendy for each api!)
-    gl_Position.y = -gl_Position.y;
     fragmentColor = vertexColor;
 }

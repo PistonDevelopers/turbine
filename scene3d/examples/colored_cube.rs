@@ -5,6 +5,8 @@ extern crate turbine_scene3d;
 extern crate vecmath;
 extern crate camera_controllers;
 
+use piston::{Event, Input, ButtonArgs, Button, ButtonState};
+use piston::{keyboard::Key};
 use piston::window::*;
 use piston::event_loop::*;
 use piston::input::RenderEvent;
@@ -57,7 +59,7 @@ fn main() {
     let mut events = Events::new(EventSettings::new());
     let mut frame_graph = FrameGraph::new();
 
-    let cube = {
+    let (cube, cube2) = {
         let program = scene.program_from_vertex_fragment(vertex_shader, fragment_shader);
         let mvp = scene.matrix4_uniform(program, "MVP").unwrap();
 
@@ -65,13 +67,23 @@ fn main() {
         let vertex_buffer = scene.vertex_buffer3(vertex_array, 0, &vertex_buffer_data());
         let _ = scene.color_buffer(vertex_array, 1, &color_buffer_data());
 
-        frame_graph.command_list(vec![
+        let c1 = frame_graph.command_list(vec![
             EnableCullFace,
             CullFaceBack,
             UseProgram(program),
             SetModelViewProjection(mvp),
             DrawTriangles(vertex_array, vertex_buffer.len()),
-        ])
+        ]);
+
+        let c2 = frame_graph.command_list(vec![
+            EnableCullFace,
+            CullFaceBack,
+            UseProgram(program),
+            SetModelViewProjection(mvp),
+            DrawLines(vertex_array, vertex_buffer.len()),
+        ]);
+
+        (c1, c2)
     };
 
     let cubes = frame_graph.command_list(vec![
@@ -82,13 +94,29 @@ fn main() {
             Draw(cube)
         ]);
 
+    let cubes2 = frame_graph.command_list(vec![
+            Scale([1.0, 1.0, 1.0]),
+            Draw(cube2),
+            Translate([2.5, 0.0, 0.0]),
+            RotateAxisDeg(vec3_normalized([1.0, 0.0, 1.0]), 45.0),
+            Draw(cube2)
+        ]);
+
     let mut first_person = FirstPerson::new(
         [0.5, 0.5, 4.0],
         FirstPersonSettings::keyboard_wasd()
     );
 
+    let mut switch = false;
     while let Some(e) = events.next(window!()) {
         first_person.event(&e);
+
+        match e {
+            Event::Input(Input::Button(ButtonArgs {button: Button::Keyboard(Key::T), state: ButtonState::Release, ..}), _) => {
+                switch = !switch;
+            },
+            _ => ()
+        };
 
         if let Some(args) = e.render_args() {
             let proj = get_projection(window!());
@@ -98,7 +126,12 @@ fn main() {
             scene.clear([0.0, 0.0, 0.0, 1.0]);
             scene.scale([1.0, 1.0, 1.0]);
 
-            scene.draw(cubes, &frame_graph);
+            if !switch {
+                scene.draw(cubes, &frame_graph);
+            }
+            else {
+                scene.draw(cubes2, &frame_graph);
+            }
         }
     }
 
