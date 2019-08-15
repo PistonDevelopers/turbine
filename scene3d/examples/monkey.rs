@@ -36,9 +36,9 @@ fn main() {
             .exit_on_esc(true);
         let mut scene = Scene::new(SceneSettings::new(), settings);
         scene.window().set_capture_cursor(true);
-        let vertex_shader = scene.vertex_shader(include_str!("C:/Users/aaronruel/Documents/turbine/scene3d/assets/basic_shading_rendy.glslv"))
+        let vertex_shader = scene.vertex_shader(include_str!("../assets/basic_shading_rendy.glslv"))
             .unwrap();
-        let fragment_shader = scene.fragment_shader(include_str!("C:/Users/aaronruel/Documents/turbine/scene3d/assets/basic_shading_rendy.glslf"))
+        let fragment_shader = scene.fragment_shader(include_str!("../assets/basic_shading_rendy.glslf"))
             .unwrap();
         (scene, vertex_shader, fragment_shader)
     };
