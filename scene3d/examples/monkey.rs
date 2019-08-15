@@ -123,9 +123,6 @@ fn main() {
             time += args.dt as f32;
         }
     }
-
-    #[cfg(any(feature = "dx12", feature = "metal", feature = "vulkan"))]
-    scene.drop();
 }
 
 fn get_projection<W: Window>(w: &W) -> Matrix4<f32> {

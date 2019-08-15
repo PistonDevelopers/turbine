@@ -1,6 +1,5 @@
 extern crate piston;
 extern crate sdl2_window;
-extern crate winit_window;
 extern crate turbine_scene3d;
 extern crate vecmath;
 extern crate camera_controllers;
@@ -134,9 +133,6 @@ fn main() {
             }
         }
     }
-
-    #[cfg(any(feature = "dx12", feature = "metal", feature = "vulkan"))]
-    scene.drop();
 }
 
 fn get_projection<W: Window>(w: &W) -> Matrix4<f32> {

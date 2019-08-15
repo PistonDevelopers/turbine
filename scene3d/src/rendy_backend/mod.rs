@@ -6,7 +6,6 @@
 
 extern crate rendy;
 extern crate spirv_reflect;
-extern crate serde;
 extern crate serde_json;
 extern crate winit_window;
 
@@ -15,7 +14,9 @@ use std::{
     io::BufReader,
     fs::File,
     option::Option,
-    mem::size_of
+    sync::atomic::AtomicUsize,
+    sync::atomic::Ordering,
+    mem::ManuallyDrop
 };
 use self::rendy::{
     command::{RenderPassEncoder, QueueId},
@@ -210,10 +211,10 @@ pub struct ShaderData {
     pub uniform_map: Vec<ReflectDescriptorBinding>
 }
 
-fn get_descriptors(ss: &shader::SpirvShader) -> Vec<ReflectDescriptorBinding> {
+fn get_descriptors(spirv: &shader::SpirvShader) -> Vec<ReflectDescriptorBinding> {
     // HACK: taking advantage of serde to get spirv data for reflection (yikes)
-    let s = serde_json::to_value(&ss).unwrap();
-    let s_spirv: Vec<u8> = s["spirv"]
+    let json = serde_json::to_value(&spirv).unwrap();
+    let s_spirv: Vec<u8> = json["spirv"]
         .as_array()
         .unwrap()
         .iter()
@@ -280,6 +281,7 @@ impl ShaderData {
 pub struct DrawData {
     ubo_index: usize,
     mesh_index: usize,
+    shader_index: usize,
 }
 
 // Correspond each type with its UBO name and std140 alignment size
@@ -337,6 +339,8 @@ pub struct Aux<B: hal::Backend> {
     /// Texture unit
     pub bound_texture: usize,
     pub textures: Vec<texture::Texture<B>>,
+    // A way to associate shaders with the different pipelines in the graph while building
+    shader_builder_index: AtomicUsize,
 }
 
 impl<B> Aux<B>
@@ -371,6 +375,7 @@ where
             vertex_arrays,
             bound_texture,
             textures: Vec::new(),
+            shader_builder_index: AtomicUsize::new(0)
         }
     }
 
@@ -406,8 +411,8 @@ where
         }
     }
 
-    fn load_shader_set(&self, factory: &mut Factory<B>, _aux: &Aux<B>) -> shader::ShaderSet<B> {
-        match _aux.shaders.get(_aux.bound_shader) {
+    fn load_shader_set(&self, factory: &mut Factory<B>, aux: &Aux<B>) -> shader::ShaderSet<B> {
+        match aux.shaders.get(aux.shader_builder_index.load(Ordering::Relaxed)) {
             Some(shader) => shader.shader.build(factory, Default::default()).unwrap(),
             None => panic!("Bound shader cannot be built because it does not exist")
         }
@@ -423,13 +428,22 @@ where
         _images: Vec<NodeImage>,
         set_layouts: &[Handle<DescriptorSetLayout<B>>],
     ) -> Result<RendyPipeline<B>, failure::Error> {
+        let shader_builder_index = aux.shader_builder_index.load(Ordering::Relaxed);
+        let find_block_size = || -> Result<u64, failure::Error> {
+            for i in 0..aux.shaders[shader_builder_index].uniform_map.len() {
+                let size = aux.shaders[shader_builder_index].uniform_map[i].block.size;
+                if size > 0 { return Ok(size as u64) }
+            }
+            Err(failure::err_msg("No UBO blocks found in any shader"))
+        };
+        
         let align = factory
             .physical()
             .limits()
             .min_uniform_buffer_offset_alignment;
 
         // Size of the UBO for the attached shader
-        let ubo_size = (((size_of::<f32>() as u64 * 53) / align) + 1) * align;
+        let ubo_size = ((find_block_size()? / align) + 1) * align;
         let frame_size = ubo_size * UBOS_PER_FRAME_SIZE;
         let frames = ctx.frames_in_flight as u64;
 
@@ -500,6 +514,7 @@ where
             ubo_index_prep: 0, 
             ubo_index_draw: 0, 
             buffer, 
+            shader_builder_index,
             sets,
             sampler_sets
         })
@@ -509,12 +524,12 @@ where
 /// Stores state for the rendy backend.
 #[derive(Debug)]
 struct RendyPipeline<B: hal::Backend> {
-    //textures: Vec<rendy::texture::Texture<B>>,
     frame_size: u64, // size of a single frame
     ubo_size: u64, // size of a single UBO
     ubo_index_prep: u64, // selects which UBO within the frame we're using
     ubo_index_draw: usize,
     buffer: Escape<Buffer<B>>,
+    shader_builder_index: usize,
     sets: Vec<Escape<DescriptorSet<B>>>,
     sampler_sets: Vec<Escape<DescriptorSet<B>>>,
 }
@@ -582,6 +597,9 @@ where
         aux: &Aux<B>,
     ) {
         for draw in &aux.draw_data {
+            // Make sure the draw call is using the shader attached to this pipeline
+            if draw.shader_index != self.shader_builder_index { continue };
+
             let frame_offset = UBOS_PER_FRAME_SIZE as usize * index;
             let frame_ubo_index: usize = frame_offset + self.ubo_index_draw;
 
@@ -695,9 +713,9 @@ where
             use std::mem::transmute;
             // reinterpret_cast T to Aux
             let x: &Aux<B> = transmute(aux);
-            let layout = match x.shaders.get(x.bound_shader) {
+            let layout = match x.shaders.get(x.shader_builder_index.load(Ordering::Relaxed)) {
                 Some(shader) => shader.reflection.layout().unwrap(),
-                None => panic!("Bound shader cannot be built because it does not exist")
+                None => return Err(failure::err_msg("Bound shader cannot be built because it does not exist"))
             };
             layout
                 .sets
@@ -895,6 +913,13 @@ where
 
         shader_set.dispose(factory);
 
+        unsafe {
+            use std::mem::transmute;
+            // reinterpret_cast T to Aux
+            let x: &Aux<B> = transmute(aux);
+            x.shader_builder_index.fetch_add(1, Ordering::Relaxed);
+        };
+
         Ok(Box::new(RendyGroup::<B, _> {
             set_layouts,
             pipeline_layout,
@@ -962,6 +987,14 @@ where
             }
         }
 
+        for i in 0..self.parents.len() {
+            unsafe {
+                factory.device().destroy_graphics_pipeline(
+                    read(&self.parents[i])
+                );
+            }
+        }
+
         unsafe {
             factory.device().destroy_pipeline_layout(self.pipeline_layout);
             drop(self.set_layouts);
@@ -982,7 +1015,7 @@ where
     // Device
     pub factory: Factory<B>,
     pub queue_id: QueueId,
-    pub families: rendy::command::Families<B>,
+    pub families: ManuallyDrop<rendy::command::Families<B>>,
 }
 
 impl<B> RendyState<B>
@@ -994,7 +1027,8 @@ where
 
         let config: Config = Default::default();
 
-        let (factory, families): (Factory<B>, _) = rendy::factory::init(config).unwrap();
+        let (factory, _families): (Factory<B>, _) = rendy::factory::init(config).unwrap();
+        let families = ManuallyDrop::new(_families);
 
         // HACK !
         // https://github.com/ggez/ggraphics/blob/master/src/lib.rs#L1154
@@ -1015,6 +1049,22 @@ where
             factory,
             families,
             queue_id,
+        }
+    }
+}
+
+impl<B> Drop for RendyState<B>
+where
+    B: hal::Backend
+{
+    fn drop(&mut self) {
+        match self.graph.take() {
+            Some(graph) => graph.dispose(&mut self.factory, &self.aux),
+            _ => ()
+        };
+
+        unsafe {
+            ManuallyDrop::drop(&mut self.families);
         }
     }
 }
@@ -1305,7 +1355,7 @@ impl Scene {
     pub fn set_vector3(&mut self, v_id: Vector3Uniform, v: Vector3<f32>) {
         match self.rendy_state.aux.ubo_data.current_data.get_mut(v_id.0) {
             Some(UboType::Vec3(data, _, _)) => *data = v,
-            _ => panic!("The Vector2Uniform does not exist")
+            _ => panic!("The Vector3Uniform does not exist")
         }
     }
 
@@ -1313,7 +1363,7 @@ impl Scene {
     pub fn set_f32(&mut self, f_id: F32Uniform, v: f32) {
         match self.rendy_state.aux.ubo_data.current_data.get_mut(f_id.0) {
             Some(UboType::Float(data, _, _)) => *data = v,
-            _ => panic!("The Vector2Uniform does not exist")
+            _ => panic!("The F32Uniform does not exist")
         }
     }
 
@@ -1467,6 +1517,8 @@ impl Scene {
     pub fn draw_triangles(&mut self, vertex_array: VertexArray, _len: usize) {
         // Set the correct pipeline mode
         self.rendy_state.aux.draw_mode = PipelineDrawMode::Fill;
+        // Get the bound shader
+        let shader_index = self.rendy_state.aux.bound_shader;
         // Bind the vertex array for drawing
         self.rendy_state.aux.bound_vertex_array = vertex_array.0;
         let mesh_index = vertex_array.0;
@@ -1474,13 +1526,15 @@ impl Scene {
         let fd = self.rendy_state.aux.ubo_data.current_data.clone();
         // Push the state of ubo and mesh binding for later drawing
         self.rendy_state.aux.ubo_data.frame_data.push(fd);
-        self.rendy_state.aux.draw_data.push(DrawData {mesh_index, ubo_index});
+        self.rendy_state.aux.draw_data.push(DrawData {mesh_index, ubo_index, shader_index});
     }
 
     /// Draws triangles.
     pub fn draw_lines(&mut self, vertex_array: VertexArray, _len: usize) {
         // Set the correct pipeline mode
         self.rendy_state.aux.draw_mode = PipelineDrawMode::Line;
+        // Get the bound shader
+        let shader_index = self.rendy_state.aux.bound_shader;
         // Bind the vertex array for drawing
         self.rendy_state.aux.bound_vertex_array = vertex_array.0;
         let mesh_index = vertex_array.0;
@@ -1488,13 +1542,15 @@ impl Scene {
         let fd = self.rendy_state.aux.ubo_data.current_data.clone();
         // Push the state of ubo and mesh binding for later drawing
         self.rendy_state.aux.ubo_data.frame_data.push(fd);
-        self.rendy_state.aux.draw_data.push(DrawData {mesh_index, ubo_index});
+        self.rendy_state.aux.draw_data.push(DrawData {mesh_index, ubo_index, shader_index});
     }
 
     /// Draws triangles.
     pub fn draw_points(&mut self, vertex_array: VertexArray, _len: usize) {
         // Set the correct pipeline mode
         self.rendy_state.aux.draw_mode = PipelineDrawMode::Point;
+        // Get the bound shader
+        let shader_index = self.rendy_state.aux.bound_shader;
         // Bind the vertex array for drawing
         self.rendy_state.aux.bound_vertex_array = vertex_array.0;
         let mesh_index = vertex_array.0;
@@ -1502,7 +1558,7 @@ impl Scene {
         let fd = self.rendy_state.aux.ubo_data.current_data.clone();
         // Push the state of ubo and mesh binding for later drawing
         self.rendy_state.aux.ubo_data.frame_data.push(fd);
-        self.rendy_state.aux.draw_data.push(DrawData {mesh_index, ubo_index});
+        self.rendy_state.aux.draw_data.push(DrawData {mesh_index, ubo_index, shader_index});
     }
 
     /// Executes commands in command list.
@@ -1520,10 +1576,10 @@ impl Scene {
                 SetVector2(uni, val) => self.set_vector2(uni, val),
                 SetVector3(uni, val) => self.set_vector3(uni, val),
                 SetMatrix4(uni, val) => self.set_matrix4(uni, val),
-                //EnableFrameBufferSRGB => self.enable_framebuffer_srgb(), //-not simple
-                //DisableFrameBufferSRGB => self.disable_framebuffer_srgb(), // not simple
-                //EnableBlend => self.enable_blend(), //-simple w/ gfx_hal::command::RawCommandBuffer::set_scissors(self.raw, first_scissor, rects)
-                //DisableBlend => self.disable_blend(), // simple
+                //EnableFrameBufferSRGB => self.enable_framebuffer_srgb(),
+                //DisableFrameBufferSRGB => self.disable_framebuffer_srgb(),
+                //EnableBlend => self.enable_blend(),
+                //DisableBlend => self.disable_blend(),
                 EnableCullFace => self.enable_cull_face(),
                 DisableCullFace => self.disable_cull_face(),
                 CullFaceFront => self.cull_face_front(),
@@ -1579,17 +1635,25 @@ impl Scene {
             )),
         );
 
-        let render_group_desc = RendyGroupDesc::new();
-        let pass = graph_builder.add_node(
-            render_group_desc.builder()
-                .into_subpass()
-                .with_color(color)
-                .with_depth_stencil(depth)
-                .into_pass()
-        );
+        let mut passes = Vec::new();
+        for _ in 0..self.rendy_state.aux.shaders.len() {
+            let render_group_desc = RendyGroupDesc::new();
+            passes.push(graph_builder.add_node(
+                render_group_desc.builder()
+                    .into_subpass()
+                    .with_color(color)
+                    .with_depth_stencil(depth)
+                    .into_pass()
+            ));
+        }
 
-        let present_builder = PresentNode::builder(&self.rendy_state.factory, surface, color)
-            .with_dependency(pass);
+        let present_builder = passes
+            .into_iter()
+            .fold(
+                PresentNode::builder(&self.rendy_state.factory, surface, color), 
+                |pn, x| pn.with_dependency(x)
+            );
+
         let frames = present_builder.image_count();
 
         graph_builder.add_node(present_builder);
@@ -1627,10 +1691,5 @@ impl Scene {
         // reset ubo draw state
         self.rendy_state.aux.ubo_data.frame_data.clear();
         self.rendy_state.aux.draw_data.clear();
-    }
-
-    /// Drop trait does not move self, which is required, so drop needs to be called explicitly
-    pub fn drop(mut self) {
-        self.rendy_state.graph.unwrap().dispose(&mut self.rendy_state.factory, &self.rendy_state.aux);
     }
 }
