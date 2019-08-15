@@ -52,5 +52,4 @@ version = "0.6"
 
 [dependencies.pistoncore-winit_window]
 optional = true
-git = "https://github.com/aaruel/winit_window"
-rev = "18581b2"
+version = "0.12.0"
