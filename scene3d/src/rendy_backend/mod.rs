@@ -6,7 +6,6 @@
 
 extern crate rendy;
 extern crate spirv_reflect;
-extern crate serde_json;
 extern crate winit_window;
 
 use std::{
@@ -212,16 +211,9 @@ pub struct ShaderData {
 }
 
 fn get_descriptors(spirv: &shader::SpirvShader) -> Vec<ReflectDescriptorBinding> {
-    // HACK: taking advantage of serde to get spirv data for reflection (yikes)
-    let json = serde_json::to_value(&spirv).unwrap();
-    let s_spirv: Vec<u8> = json["spirv"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .map(|n| n.as_u64().unwrap() as u8)
-        .collect();
-
-    ShaderModule::load_u8_data(s_spirv.as_slice())
+    use self::shader::{Shader};
+    let s_spirv = spirv.spirv().unwrap();
+    ShaderModule::load_u8_data(&s_spirv)
         .unwrap()
         .enumerate_descriptor_bindings(None)
         .unwrap()

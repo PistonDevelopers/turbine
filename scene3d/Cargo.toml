@@ -12,7 +12,7 @@ documentation = "https://docs.rs/turbine_scene3d"
 
 [features]
 default = []
-rendy_backend = ["failure", "spirv-reflect", "serde_json", "env_logger", "pistoncore-winit_window"]
+rendy_backend = ["failure", "spirv-reflect", "env_logger", "pistoncore-winit_window"]
 metal = ["rendy/metal", "rendy_backend"]
 dx12 = ["rendy/dx12", "rendy_backend"]
 vulkan = ["rendy/vulkan", "rendy_backend"]
@@ -41,10 +41,6 @@ version = "0.1"
 [dependencies.spirv-reflect]
 optional = true
 version = "0.2.1"
-
-[dependencies.serde_json]
-optional = true
-version = "1.0"
 
 [dependencies.env_logger]
 optional = true
