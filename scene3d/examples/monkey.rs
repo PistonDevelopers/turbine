@@ -7,21 +7,53 @@ extern crate camera_controllers;
 use piston::window::*;
 use piston::event_loop::*;
 use piston::input::{RenderEvent, UpdateEvent};
-use sdl2_window::Sdl2Window;
 use turbine_scene3d::*;
 use turbine_scene3d::Command::*;
 use vecmath::*;
 use camera_controllers::*;
 
 fn main() {
-    let settings = WindowSettings::new("monkey", [512; 2])
-        .samples(4)
-        .exit_on_esc(true);
-    let mut window: Sdl2Window = settings.build().unwrap();
-    window.set_capture_cursor(true);
-    let mut events = Events::new(EventSettings::new());
+     #[cfg(not(any(feature = "dx12", feature = "metal", feature = "vulkan")))]
+    let (mut window, mut scene, vertex_shader, fragment_shader) = {
+        use sdl2_window::Sdl2Window;
+        let settings = WindowSettings::new("colored cube", [512; 2])
+            .samples(4)
+            .exit_on_esc(true);
+        let mut window: Sdl2Window = settings.build().unwrap();
+        window.set_capture_cursor(true);
+        let mut scene = Scene::new(SceneSettings::new());
+        let vertex_shader = scene.vertex_shader(include_str!("../assets/basic_shading.glslv"))
+            .unwrap();
+        let fragment_shader = scene.fragment_shader(include_str!("../assets/basic_shading.glslf"))
+            .unwrap();
+        (window, scene, vertex_shader, fragment_shader)
+    };
 
-    let mut scene = Scene::new(SceneSettings::new());
+    #[cfg(any(feature = "dx12", feature = "metal", feature = "vulkan"))]
+    let (mut scene, vertex_shader, fragment_shader) = {
+        let settings = WindowSettings::new("colored cube", [512; 2])
+            .samples(4)
+            .exit_on_esc(true);
+        let mut scene = Scene::new(SceneSettings::new(), settings);
+        scene.window().set_capture_cursor(true);
+        let vertex_shader = scene.vertex_shader(include_str!("../assets/basic_shading_rendy.glslv"))
+            .unwrap();
+        let fragment_shader = scene.fragment_shader(include_str!("../assets/basic_shading_rendy.glslf"))
+            .unwrap();
+        (scene, vertex_shader, fragment_shader)
+    };
+
+    #[cfg(not(any(feature = "dx12", feature = "metal", feature = "vulkan")))]
+    macro_rules! window {
+        () => { &mut window };
+    }
+
+    #[cfg(any(feature = "dx12", feature = "metal", feature = "vulkan"))]
+    macro_rules! window {
+        () => { scene.window() };
+    }
+
+    let mut events = Events::new(EventSettings::new());
     let mut frame_graph = FrameGraph::new();
 
     let mut first_person = FirstPerson::new(
@@ -29,21 +61,15 @@ fn main() {
         FirstPersonSettings::keyboard_wasd()
     );
 
-    let program = {
-        let vertex_shader = scene.vertex_shader(include_str!("../assets/basic_shading.glslv"))
-            .unwrap();
-        let fragment_shader = scene.fragment_shader(include_str!("../assets/basic_shading.glslf"))
-            .unwrap();
-        scene.program_from_vertex_fragment(vertex_shader, fragment_shader)
-    };
-
-    let (monkey, light_position_id, ambient_light_id) = {
+    let (monkey, light_position_id, ambient_light_id, program) = {
         let obj_mesh = ObjMesh::load("assets/monkey.obj").unwrap();
         let vertex_array = scene.vertex_array();
         let vertex_buffer = scene.vertex_buffer3(vertex_array, 0, &obj_mesh.vertices);
         let _ = scene.uv_buffer(vertex_array, 1, &obj_mesh.uvs);
         let _ = scene.normal_buffer(vertex_array, 2, &obj_mesh.normals);
         let texture = scene.load_texture("assets/monkey.png").unwrap();
+
+        let program = scene.program_from_vertex_fragment(vertex_shader, fragment_shader);
 
         let matrix_id = scene.matrix4_uniform(program, "MVP").unwrap();
         let model_matrix_id = scene.matrix4_uniform(program, "M").unwrap();
@@ -57,7 +83,7 @@ fn main() {
             SetModel(model_matrix_id),
             SetTexture(texture),
             DrawTriangles(vertex_array, vertex_buffer.len()),
-        ]), light_position_id, ambient_light_id)
+        ]), light_position_id, ambient_light_id, program)
     };
 
     let monkeys = frame_graph.command_list(vec![
@@ -76,13 +102,14 @@ fn main() {
     ]);
 
     let mut time: f32 = 0.0;
-    while let Some(e) = events.next(&mut window) {
+    while let Some(e) = events.next(window!()) {
         first_person.event(&e);
 
         if let Some(args) = e.render_args() {
-            scene.projection = get_projection(&window);
-            scene.camera = first_person.camera(args.ext_dt).orthogonal();
-            scene.model = mat4_id();
+            let proj = get_projection(window!());
+            scene.projection(proj);
+            scene.camera(first_person.camera(args.ext_dt).orthogonal());
+            scene.model(mat4_id());
             scene.clear([0.0, 0.0, 0.0, 1.0]);
 
             scene.use_program(program);

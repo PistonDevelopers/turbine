@@ -10,6 +10,13 @@ repository = "https://github.com/PistonDevelopers/turbine.git"
 homepage = "https://github.com/PistonDevelopers/turbine"
 documentation = "https://docs.rs/turbine_scene3d"
 
+[features]
+default = []
+rendy_backend = ["failure", "spirv-reflect", "env_logger", "pistoncore-winit_window"]
+metal = ["rendy/metal", "rendy_backend"]
+dx12 = ["rendy/dx12", "rendy_backend"]
+vulkan = ["rendy/vulkan", "rendy_backend"]
+
 [dependencies]
 gl = "0.11.0"
 piston = "0.49.0"
@@ -21,3 +28,24 @@ image = "0.22.1"
 [dev-dependencies]
 pistoncore-sdl2_window = "0.63.0"
 camera_controllers = "0.31.0"
+
+[dependencies.rendy]
+optional = true
+version = "0.3.2"
+features = ["texture-image", "shader-compiler", "vulkan", "serde-1"]
+
+[dependencies.failure]
+optional = true
+version = "0.1"
+
+[dependencies.spirv-reflect]
+optional = true
+version = "0.2.1"
+
+[dependencies.env_logger]
+optional = true
+version = "0.6"
+
+[dependencies.pistoncore-winit_window]
+optional = true
+version = "0.12.0"
