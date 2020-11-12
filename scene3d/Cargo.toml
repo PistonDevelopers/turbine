@@ -1,6 +1,6 @@
 [package]
 name = "turbine_scene3d"
-version = "0.29.0"
+version = "0.30.0"
 authors = ["Sven Nilsen <bvssvni@gmail.com>"]
 description = "Scene rendering for the Turbine engine"
 readme = "README.md"
@@ -22,7 +22,7 @@ vulkan = ["rendy/vulkan", "rendy_backend"]
 gl = "0.11.0"
 piston = "0.52.0"
 vecmath = "1.0.0"
-piston2d-opengl_graphics = "0.75.0"
+piston2d-opengl_graphics = "0.76.0"
 wavefront_obj = "8.0.0"
 image = "0.23.0"
 
