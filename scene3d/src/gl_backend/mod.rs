@@ -67,7 +67,7 @@ impl Scene {
 
         let image = match image::open(path)? {
             image::DynamicImage::ImageRgba8(img) => img,
-            x => x.to_rgba()
+            x => x.to_rgba8()
         };
         let (image_width, image_height) = image.dimensions();
         let mut texture_id = 0;
