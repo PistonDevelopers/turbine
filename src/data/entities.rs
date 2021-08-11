@@ -1,11 +1,11 @@
 //! Read and write entities.
 
+use crate::world::{self, World, ENTITY_COUNT};
 use std::io;
-use std::path::{ Path, PathBuf };
-use world::{ self, ENTITY_COUNT, World };
+use std::path::{Path, PathBuf};
 
 /// The name of entity folder.
-pub const FOLDER: &'static str = "entities";
+pub const FOLDER: &str = "entities";
 
 /// Gets a list of all entity files.
 pub fn files(project_folder: &str) -> io::Result<Vec<PathBuf>> {
@@ -14,13 +14,15 @@ pub fn files(project_folder: &str) -> io::Result<Vec<PathBuf>> {
     let mut result = Vec::with_capacity(ENTITY_COUNT);
     let project_folder: PathBuf = PathBuf::from(project_folder);
     let entities_folder = project_folder.join(FOLDER);
-    for entry in try!(read_dir(entities_folder)) {
-        let entry = try!(entry);
+    for entry in read_dir(entities_folder)? {
+        let entry = entry?;
         // Ignore files that starts with ".".
         if let Some(file_name) = entry.file_name().to_str() {
-            if file_name.starts_with(".") { continue; }
+            if file_name.starts_with('.') {
+                continue;
+            }
         }
-        let metadata = try!(entry.metadata());
+        let metadata = entry.metadata()?;
         if metadata.is_file() {
             result.push(entry.path());
         }
@@ -36,20 +38,19 @@ pub fn folder(project_folder: &str) -> PathBuf {
 
 /// Loads entities from files.
 pub fn load(w: &mut World, files: &[PathBuf]) -> Result<(), io::Error> {
-    use std::fs::File;
-    use std::io::Read;
-    use std::sync::Arc;
+    use crate::math::{Vec3, AABB};
     use piston_meta::bootstrap::Convert;
     use piston_meta::*;
     use range::Range;
-    use math::{ AABB, Vec3 };
+    use std::fs::File;
+    use std::io::Read;
+    use std::sync::Arc;
     use world::Mask;
 
-    fn read_header(mut convert: Convert)
-    -> Result<(Range, (Option<Arc<String>>, usize)), ()> {
-        let start = convert.clone();
+    fn read_header(mut convert: Convert) -> Result<(Range, (Option<Arc<String>>, usize)), ()> {
+        let start = convert;
         let header = "header";
-        let range = try!(convert.start_node(header));
+        let range = convert.start_node(header)?;
         convert.update(range);
         let mut name = None;
         let mut entity_id = None;
@@ -68,15 +69,17 @@ pub fn load(w: &mut World, files: &[PathBuf]) -> Result<(), io::Error> {
             }
         }
         let entity_id = match entity_id {
-            None => { return Err(()); }
-            Some(x) => x
+            None => {
+                return Err(());
+            }
+            Some(x) => x,
         };
         Ok((convert.subtract(start), (name, entity_id)))
     }
 
     fn read_vec3(name: &str, mut convert: Convert) -> Result<(Range, Vec3), ()> {
-        let start = convert.clone();
-        let range = try!(convert.start_node(name));
+        let start = convert;
+        let range = convert.start_node(name)?;
         convert.update(range);
         let mut x = 0.0;
         let mut y = 0.0;
@@ -103,9 +106,9 @@ pub fn load(w: &mut World, files: &[PathBuf]) -> Result<(), io::Error> {
     }
 
     fn read_aabb(mut convert: Convert) -> Result<(Range, AABB), ()> {
-        let start = convert.clone();
+        let start = convert;
         let name = "aabb";
-        let range = try!(convert.start_node(name));
+        let range = convert.start_node(name)?;
         convert.update(range);
         let mut min = None;
         let mut max = None;
@@ -124,14 +127,18 @@ pub fn load(w: &mut World, files: &[PathBuf]) -> Result<(), io::Error> {
             }
         }
         let min = match min {
-            None => { return Err(()); }
-            Some(x) => x
+            None => {
+                return Err(());
+            }
+            Some(x) => x,
         };
         let max = match max {
-            None => { return Err(()); }
-            Some(x) => x
+            None => {
+                return Err(());
+            }
+            Some(x) => x,
         };
-        Ok((convert.subtract(start), AABB { min: min, max: max }))
+        Ok((convert.subtract(start), AABB { min, max }))
     }
 
     let syntax_source = include_str!("../../assets/entity/syntax.txt");
@@ -142,8 +149,8 @@ pub fn load(w: &mut World, files: &[PathBuf]) -> Result<(), io::Error> {
         data.clear();
         entity_source.clear();
 
-        let mut file = try!(File::open(f));
-        try!(file.read_to_string(&mut entity_source));
+        let mut file = File::open(f)?;
+        file.read_to_string(&mut entity_source)?;
 
         // TODO: Return an error message.
         stderr_unwrap(&entity_source, parse(&syntax, &entity_source, &mut data));
@@ -169,8 +176,10 @@ pub fn load(w: &mut World, files: &[PathBuf]) -> Result<(), io::Error> {
 
         // TODO: Return an error message if header is missing.
         let (name, id) = match header {
-            None => { panic!("header is missing in file `{}`", f.to_str().unwrap()); }
-            Some(x) => x
+            None => {
+                panic!("header is missing in file `{}`", f.to_str().unwrap());
+            }
+            Some(x) => x,
         };
         w.mask[id].insert(Mask::ALIVE);
         w.name[id] = name;
@@ -198,37 +207,39 @@ pub fn save<P: AsRef<Path>>(w: &World, entities_folder: P) -> Result<(), io::Err
 
     let entities_folder = entities_folder.as_ref();
     for id in 0..ENTITY_COUNT {
-        if !w.mask[id].contains(Mask::ALIVE) { continue; }
+        if !w.mask[id].contains(Mask::ALIVE) {
+            continue;
+        }
 
         let f = entities_folder.join(format!("{}.txt", id));
-        let ref mut file = try!(File::create(f));
+        let mut file = File::create(f)?;
 
         // Header
         if let Some(ref name) = w.name[id] {
-            try!(writeln!(file, "{}", name));
+            writeln!(file, "{}", name)?;
         } else {
-            try!(writeln!(file, "<name>"));
+            writeln!(file, "<name>")?;
         }
-        try!(writeln!(file, "{}", id));
+        writeln!(file, "{}", id)?;
 
         // Position.
-        try!(writeln!(file, "position"));
+        writeln!(file, "position")?;
         let pos = w.init.position[id];
         for i in 0..3 {
-            try!(writeln!(file, "\t{}", pos[i]));
+            writeln!(file, "\t{}", pos[i])?;
         }
 
         // AABB.
         if w.mask[id].contains(world::Mask::AABB) {
             let aabb = w.aabb[id];
-            try!(writeln!(file, "aabb"));
-            try!(writeln!(file, "  min"));
+            writeln!(file, "aabb")?;
+            writeln!(file, "  min")?;
             for i in 0..3 {
-                try!(writeln!(file, "    {}", aabb.min[i]));
+                writeln!(file, "    {}", aabb.min[i])?;
             }
-            try!(writeln!(file, "  max"));
+            writeln!(file, "  max")?;
             for i in 0..3 {
-                try!(writeln!(file, "    {}", aabb.max[i]));
+                writeln!(file, "    {}", aabb.max[i])?;
             }
         }
 

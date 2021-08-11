@@ -4,15 +4,15 @@
 
 #[macro_use]
 extern crate bitflags;
-extern crate vecmath;
+extern crate camera_controllers;
+extern crate gfx;
+extern crate gfx_debug_draw;
+extern crate gfx_device_gl;
+extern crate gfx_text;
+extern crate piston_meta;
 extern crate piston_window;
 extern crate sdl2_window;
-extern crate gfx;
-extern crate gfx_device_gl;
-extern crate piston_meta;
-extern crate camera_controllers;
-extern crate gfx_debug_draw;
-extern crate gfx_text;
+extern crate vecmath;
 #[macro_use]
 extern crate log;
 extern crate range;
@@ -20,20 +20,20 @@ extern crate range;
 extern crate conrod;
 extern crate find_folder;
 
-pub use math::Vec3;
 pub use math::Mat4;
-pub use math::AABB;
 pub use math::Ray;
+pub use math::Vec3;
+pub use math::AABB;
 
 pub use world::World;
 
+pub mod data;
+pub mod logger;
 pub mod math;
 pub mod render;
-pub mod logger;
 pub mod world;
-pub mod data;
 
-widget_ids!{
+widget_ids! {
     #[allow(missing_docs)]
     pub struct Ids {
         refresh,
@@ -42,22 +42,23 @@ widget_ids!{
 
 /// Starts Turbine pointing it to a project folder.
 pub fn start(project_folder: &str) {
+    use camera_controllers::*;
     use piston_window::*;
     use sdl2_window::Sdl2Window;
-    use camera_controllers::*;
     // use conrod::{ Ui, Theme };
     // use gfx_debug_draw::DebugRenderer;
-    use math::Matrix;
+    use crate::math::Matrix;
 
-    println!("
+    println!(
+        "
 ~~~~~~~~   TURBINE   ~~~~~~~~\n\
 =============================\n\
 Camera navigation (on/off): C\n\
 Camera control: WASD\n\
-");
+"
+    );
 
-    let mut window: PistonWindow<Sdl2Window> =
-        WindowSettings::new("Turbine", [1024, 768])
+    let mut window: PistonWindow<Sdl2Window> = WindowSettings::new("Turbine", [1024, 768])
         .exit_on_esc(true)
         .samples(4)
         .build()
@@ -74,16 +75,16 @@ Camera control: WASD\n\
     let far = 1000.0;
     let get_projection = |draw_size: Size| {
         CameraPerspective {
-            fov: fov, near_clip: near, far_clip: far,
-            aspect_ratio: (draw_size.width as f32) / (draw_size.height as f32)
-        }.projection()
+            fov,
+            near_clip: near,
+            far_clip: far,
+            aspect_ratio: (draw_size.width as f32) / (draw_size.height as f32),
+        }
+        .projection()
     };
 
     let mut projection = get_projection(window.draw_size());
-    let mut first_person = FirstPerson::new(
-        [0.5, 0.5, 4.0],
-        FirstPersonSettings::keyboard_wasd()
-    );
+    let mut first_person = FirstPerson::new([0.5, 0.5, 4.0], FirstPersonSettings::keyboard_wasd());
 
     // TODO: Update debug renderer.
     /*
@@ -133,13 +134,11 @@ Camera control: WASD\n\
             let draw_size = [draw_size.width, draw_size.height];
             let args = e.render_args().unwrap();
             let camera = first_person.camera(args.ext_dt);
-            let mvp = model_view_projection(
-                Matrix::id(),
-                camera.orthogonal(),
-                projection
-            );
+            let mvp = model_view_projection(Matrix::id(), camera.orthogonal(), projection);
 
-            window.encoder.clear(&window.output_color, [0.3, 0.3, 0.3, 1.0]);
+            window
+                .encoder
+                .clear(&window.output_color, [0.3, 0.3, 0.3, 1.0]);
             window.encoder.clear_depth(&window.output_stencil, 1.0);
             window.encoder.clear_stencil(&window.output_stencil, 0);
 
@@ -220,7 +219,7 @@ Camera control: WASD\n\
     {
         // Save entities data.
         let entities_folder = data::entities::folder(project_folder);
-        data::entities::save(&mut world, entities_folder).unwrap();
+        data::entities::save(&world, entities_folder).unwrap();
     }
 }
 
@@ -231,7 +230,6 @@ pub mod tests {
 
     #[test]
     fn entity_syntax() {
-        let _ = load_syntax_data("assets/entity/syntax.txt",
-            "assets/entity/test-cube.txt");
+        let _ = load_syntax_data("assets/entity/syntax.txt", "assets/entity/test-cube.txt");
     }
 }

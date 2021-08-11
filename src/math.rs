@@ -7,9 +7,9 @@ pub type Vec4 = [f32; 4];
 /// Matrix type.
 pub type Mat4 = [[f32; 4]; 4];
 
-use vecmath::{ vec3_add, vec3_sub, vec3_dot, vec3_scale, vec3_normalized };
-use vecmath::{ mat4_id, mat4_inv, mat4_transposed };
-use vecmath::{ col_mat4_transform, col_mat4_mul };
+use vecmath::{col_mat4_mul, col_mat4_transform};
+use vecmath::{mat4_id, mat4_inv, mat4_transposed};
+use vecmath::{vec3_add, vec3_dot, vec3_normalized, vec3_scale, vec3_sub};
 
 /// Helper methods for vectors.
 pub trait Vector {
@@ -45,17 +45,24 @@ pub trait Vector {
 
 impl Vector for Vec3 {
     #[inline(always)]
-    fn zero() -> Self { [0.0, 0.0, 0.0] }
+    fn zero() -> Self {
+        [0.0, 0.0, 0.0]
+    }
 
     #[inline(always)]
-    fn eye_forward() -> Self { [0.0, 0.0, 1.0] }
+    fn eye_forward() -> Self {
+        [0.0, 0.0, 1.0]
+    }
 
     #[inline(always)]
     fn from_2d(pos: [f64; 2], window_size: [u32; 2]) -> Self {
         let w = window_size[0] as f32;
         let h = window_size[1] as f32;
-        [2.0 * (pos[0] as f32 - 0.5 * w) / w,
-        -2.0 * (pos[1] as f32 - 0.5 * h) / h, 0.0]
+        [
+            2.0 * (pos[0] as f32 - 0.5 * w) / w,
+            -2.0 * (pos[1] as f32 - 0.5 * h) / h,
+            0.0,
+        ]
     }
 
     #[inline(always)]
@@ -129,15 +136,19 @@ pub trait Matrix {
 
 impl Matrix for Mat4 {
     #[inline(always)]
-    fn id() -> Self { mat4_id() }
+    fn id() -> Self {
+        mat4_id()
+    }
 
     #[inline(always)]
-    fn transposed(self) -> Self { mat4_transposed(self) }
+    fn transposed(self) -> Self {
+        mat4_transposed(self)
+    }
 
     #[inline(always)]
     // fn inv(self) -> Self { mat4_inv(self) }
     fn inv(self) -> Self {
-        use vecmath::{ mat4_cast, Matrix4 };
+        use vecmath::{mat4_cast, Matrix4};
 
         let m: Matrix4<f64> = mat4_cast(self);
         mat4_cast(mat4_inv(m))
@@ -176,9 +187,8 @@ impl Matrix for Mat4 {
         let pos = self.transform(pos.point4());
         [
             (pos[0] / pos[3] + 1.0) / 2.0 * draw_size[0] as f32,
-            (draw_size[1] as f32 -
-                (pos[1] / pos[3] + 1.0) / 2.0 * draw_size[1] as f32),
-            0.0
+            (draw_size[1] as f32 - (pos[1] / pos[3] + 1.0) / 2.0 * draw_size[1] as f32),
+            0.0,
         ]
     }
 }
@@ -197,7 +207,7 @@ impl AABB {
     pub fn empty() -> AABB {
         AABB {
             min: [0.0; 3],
-            max: [0.0; 3]
+            max: [0.0; 3],
         }
     }
 }
@@ -218,7 +228,7 @@ impl Ray {
         draw_size: [u32; 2],
         fov: f32,
         near_clip: f32,
-        far_clip: f32
+        far_clip: f32,
     ) -> Ray {
         let pos: Vec3 = Vector::from_2d(pos, draw_size);
         let aspect_ratio = (draw_size[1] as f32) / (draw_size[0] as f32);
@@ -227,7 +237,10 @@ impl Ray {
         let dy = pos[1] * f;
         let ray_near = [dx * near_clip, dy * near_clip, -near_clip];
         let ray_far = [dx * far_clip, dy * far_clip, -far_clip];
-        Ray { pos: ray_near, dir: ray_far.sub(ray_near).normalized() }
+        Ray {
+            pos: ray_near,
+            dir: ray_far.sub(ray_near).normalized(),
+        }
     }
 
     /// Returns position in ground plane.
@@ -235,22 +248,22 @@ impl Ray {
     /// Returns `None` if ground intersects the start position.
     pub fn ground_plane(&self) -> Option<Vec3> {
         let dy = self.dir[1];
-        if dy.abs() < 0.000001 { None }
-        else {
+        if dy.abs() < 0.000001 {
+            None
+        } else {
             let py = self.pos[1];
             let k = -py / dy;
-            if k <= 0.0 { None }
-            else { Some(self.pos.add(self.dir.scale(k))) }
+            if k <= 0.0 {
+                None
+            } else {
+                Some(self.pos.add(self.dir.scale(k)))
+            }
         }
     }
 }
 
 /// Returns true when camera is looking in direction of a point.
-pub fn is_looking_in_direction_of(
-    camera_pos: Vec3,
-    camera_forward: Vec3,
-    point: Vec3
-) -> bool {
+pub fn is_looking_in_direction_of(camera_pos: Vec3, camera_forward: Vec3, point: Vec3) -> bool {
     let d = point.sub(camera_pos);
     d.dot(camera_forward) < 0.0
 }
