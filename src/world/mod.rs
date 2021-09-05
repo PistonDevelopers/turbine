@@ -2,8 +2,8 @@
 
 use std::sync::Arc;
 
-use math::Vec3;
-use math::AABB;
+use crate::math::Vec3;
+use crate::math::AABB;
 
 /// The maximum number of entities.
 pub const ENTITY_COUNT: usize = 10000;
@@ -36,13 +36,11 @@ impl Physics {
 
     /// Gets next linear step.
     pub fn step(&mut self, prev: &Physics, current: &Physics) {
-        use math::Vector;
+        use crate::math::Vector;
 
         for i in 0..ENTITY_COUNT {
             // current + (current - prev) = 2 * current - prev.
-            self.position[i] = current.position[i]
-                .scale(2.0)
-                .sub(prev.position[i]);
+            self.position[i] = current.position[i].scale(2.0).sub(prev.position[i]);
         }
     }
 }
@@ -91,7 +89,9 @@ impl World {
     /// Finds the first free entity slot.
     pub fn find_free_entity_slot(&self) -> Option<usize> {
         for i in 0..ENTITY_COUNT {
-            if self.mask[i].is_empty() { return Some(i); }
+            if self.mask[i].is_empty() {
+                return Some(i);
+            }
         }
         None
     }

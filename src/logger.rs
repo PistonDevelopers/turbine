@@ -1,8 +1,8 @@
 //! Logging.
 
 use log;
-use log::{ LogRecord, LogLevel, LogMetadata, LogLevelFilter };
-use log::{ SetLoggerError };
+use log::SetLoggerError;
+use log::{LogLevel, LogLevelFilter, LogMetadata, LogRecord};
 
 struct SimpleLogger;
 
