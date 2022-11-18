@@ -13,7 +13,6 @@ use vecmath::*;
 use camera_controllers::*;
 
 fn main() {
-    #[cfg(not(any(feature = "dx12", feature = "metal", feature = "vulkan")))]
     let (mut window, mut scene, vertex_shader, fragment_shader) = {
         use sdl2_window::Sdl2Window;
         let settings = WindowSettings::new("colored cube", [512; 2])
@@ -29,30 +28,6 @@ fn main() {
         (window, scene, vertex_shader, fragment_shader)
     };
 
-    #[cfg(any(feature = "dx12", feature = "metal", feature = "vulkan"))]
-    let (mut scene, vertex_shader, fragment_shader) = {
-        let settings = WindowSettings::new("colored cube", [512; 2])
-            .samples(4)
-            .exit_on_esc(true);
-        let mut scene = Scene::new(SceneSettings::new(), settings);
-        scene.window().set_capture_cursor(true);
-        let vertex_shader = scene.vertex_shader(include_str!("../assets/colored_cube_rendy.glslv"))
-            .unwrap();
-        let fragment_shader = scene.fragment_shader(include_str!("../assets/colored_cube_rendy.glslf"))
-            .unwrap();
-        (scene, vertex_shader, fragment_shader)
-    };
-
-    #[cfg(not(any(feature = "dx12", feature = "metal", feature = "vulkan")))]
-    macro_rules! window {
-        () => { &mut window };
-    }
-
-    #[cfg(any(feature = "dx12", feature = "metal", feature = "vulkan"))]
-    macro_rules! window {
-        () => { scene.window() };
-    }
-    
     let mut events = Events::new(EventSettings::new());
     let mut frame_graph = FrameGraph::new();
 
@@ -86,11 +61,11 @@ fn main() {
         FirstPersonSettings::keyboard_wasd()
     );
 
-    while let Some(e) = events.next(window!()) {
+    while let Some(e) = events.next(&mut window) {
         first_person.event(&e);
 
         if let Some(args) = e.render_args() {
-            let proj = get_projection(window!());
+            let proj = get_projection(&window);
             scene.projection(proj);
             scene.camera(first_person.camera(args.ext_dt).orthogonal());
             scene.model(mat4_id());

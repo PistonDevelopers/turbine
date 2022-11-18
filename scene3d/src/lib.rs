@@ -23,14 +23,8 @@ extern crate vecmath;
 extern crate wavefront_obj;
 extern crate image;
 
-#[cfg(any(feature = "dx12", feature = "metal", feature = "vulkan"))]
-mod rendy_backend;
-#[cfg(not(any(feature = "dx12", feature = "metal", feature = "vulkan")))]
 mod gl_backend;
 
-#[cfg(any(feature = "dx12", feature = "metal", feature = "vulkan"))]
-pub use rendy_backend::Scene;
-#[cfg(not(any(feature = "dx12", feature = "metal", feature = "vulkan")))]
 pub use gl_backend::Scene;
 
 use std::path::Path;
