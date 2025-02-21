@@ -1,6 +1,6 @@
 [package]
 name = "turbine_scene3d"
-version = "0.39.0"
+version = "0.40.0"
 authors = ["Sven Nilsen <bvssvni@gmail.com>"]
 description = "Scene rendering for the Turbine engine"
 readme = "README.md"
@@ -15,13 +15,14 @@ exclude = ["assets/*"]
 default = []
 
 [dependencies]
-gl = "0.13.0"
-piston = "0.55.0"
+gl = "0.14.0"
+piston = "1.0.0"
 vecmath = "1.0.0"
-piston2d-opengl_graphics = "0.83.0"
+piston2d-opengl_graphics = "0.87.0"
 wavefront_obj = "10.0.0"
-image = "0.24.1"
+image = "0.25.5"
 
 [dev-dependencies]
-pistoncore-sdl2_window = "0.69.0"
-camera_controllers = "0.34.0"
+pistoncore-sdl2_window = "0.71.0"
+camera_controllers = "0.35.0"
+
