@@ -1,5 +1,5 @@
 [package]
-name = "process3d"
+name = "turbine_process3d"
 version = "0.1.0"
 edition = "2024"
 description = "Processing for the Turbine engine"
