@@ -1,0 +1,14 @@
+[package]
+name = "process3d"
+version = "0.1.0"
+edition = "2024"
+description = "Processing for the Turbine engine"
+readme = "README.md"
+license = "MIT"
+keywords = ["turbine", "processing", "ray", "tracing", "piston"]
+repository = "https://github.com/PistonDevelopers/turbine.git"
+homepage = "https://github.com/PistonDevelopers/turbine"
+documentation = "https://docs.rs/turbine_process3d"
+
+[dependencies]
+
