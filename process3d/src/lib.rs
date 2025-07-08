@@ -48,6 +48,24 @@ mod tests {
     use super::*;
 
     #[test]
-    fn it_works() {
+    fn test_mask() {
+        let mut masks = mask::CompressedMasks::new();
+        masks.push(0);
+        masks.push(0);
+        masks.push(1);
+        masks.push(0);
+        masks.push(0);
+        masks.push(0);
+        masks.push(2);
+        masks.push(3);
+        masks.push(!0);
+        masks.push(!0);
+
+        let mut iter = masks.iter();
+        assert_eq!(iter.next(), Some((2, 1)));
+        assert_eq!(iter.next(), Some((6, 2)));
+        assert_eq!(iter.next(), Some((7, 3)));
+        assert_eq!(iter.next(), Some((8, !0)));
+        assert_eq!(iter.next(), Some((9, !0)));
     }
 }

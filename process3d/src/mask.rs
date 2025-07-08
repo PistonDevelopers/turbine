@@ -91,8 +91,18 @@ impl CompressedMasks {
 
     /// Iterate through decompressed words, skipping zero runs.
     pub fn iter(&self) -> impl Iterator<Item = (usize, u64)> + Clone {
-        self.segments.iter().enumerate()
-        .filter(|(_, seg)| if let Segment::ZeroRun(_) = seg {false} else {true})
+        self.segments.iter()
+        .scan(0usize, |offset, seg| {
+                let start = *offset;
+                let count = match *seg {
+                    Segment::ZeroRun(c) => c,
+                    Segment::OneRun(c)  => c,
+                    Segment::Literal(_) => 1,
+                };
+                *offset += count;
+                Some((start, seg))
+            })
+        .filter(|(_, seg)| if let Segment::ZeroRun(_) = *seg {false} else {true})
         .flat_map(|(i, seg)| match *seg {
             Segment::ZeroRun(count) => std::iter::repeat(0).take(count),
             Segment::OneRun(count)  => std::iter::repeat(!0).take(count),
