@@ -2,6 +2,8 @@
 #![doc = include_str!("../README.md")]
 #![deny(missing_docs)]
 
+pub mod mask;
+
 /// RGB color.
 pub type Rgb<T = f32> = [T; 3];
 /// RGBA color.
