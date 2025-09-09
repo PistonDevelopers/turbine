@@ -26,11 +26,11 @@ pub fn tile_mask(
 ) {
     let fr = frustum_planes_tile(persp, dim, tile_pos, tile_size);
     let mut i = 0;
-    let len = masks.len();
+    let n = list.len();
     loop {
+        if i >= n {break}
         let (chunk, bits) = triangle_chunk(&list[i..]);
         masks.push(frustum_planes_triangle_chunk_mask(&fr, &chunk, bits));
-        if masks.len() >= (len + list.len() / 64) {break}
         i += 64;
     }
 }
