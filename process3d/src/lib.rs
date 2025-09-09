@@ -96,4 +96,13 @@ mod tests {
         assert_eq!(iter.next(), Some((8, !0)));
         assert_eq!(iter.next(), Some((9, !0)));
     }
+
+    #[test]
+    fn test_triangle_chunk() {
+        let list = vec![([0.0; 3], [0.0; 3], [0.0; 3]); 72];
+        let a = triangle::triangle_chunk(&list);
+        let b = triangle::triangle_chunk(&list[64..]);
+        assert_eq!(a.1, 0xffffffffffffffff);
+        assert_eq!(b.1, 0xff);
+    }
 }
