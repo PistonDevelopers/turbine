@@ -109,7 +109,7 @@ impl CompressedMasks {
         .filter(|(_, seg)| if let Segment::ZeroRun(_) = *seg {false} else {true})
         .flat_map(|(i, seg)| match *seg {
             Segment::ZeroRun(count) => std::iter::repeat(0).take(count),
-            Segment::OneRun(count)  => std::iter::repeat(!0).take(count),
+            Segment::OneRun(count)  => std::iter::repeat(0xffffffffffffffff).take(count),
             Segment::Literal(w)     => std::iter::repeat(w).take(1),
         }.enumerate().map(move |(j, m)| (i + j, m)))
     }
