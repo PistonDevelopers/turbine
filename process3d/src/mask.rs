@@ -70,6 +70,19 @@ impl CompressedMasks {
         self.len_words
     }
 
+    /// Counts the total number of ones.
+    pub fn count_ones(&self) -> u64 {
+        let mut sum: u64 = 0;
+        for seg in &self.segments {
+            match *seg {
+                Segment::ZeroRun(_) => {}
+                Segment::OneRun(count) => sum += (64 * count) as u64,
+                Segment::Literal(w) => sum += w.count_ones() as u64,
+            }
+        }
+        sum
+    }
+
     /// Returns the word at position `i`, decompressing on the fly.
     pub fn get(&self, mut i: usize) -> Option<u64> {
         if i >= self.len_words {
@@ -110,4 +123,3 @@ impl CompressedMasks {
         }.enumerate().map(move |(j, m)| (i + j, m)))
     }
 }
-
