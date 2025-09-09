@@ -44,24 +44,15 @@ impl CompressedMasks {
         self.len_words += 1;
         match self.segments.last_mut() {
             // extend an existing zero‐run
-            Some(ZeroRun(n)) if *n > 0 && word == 0 => {
-                *n += 1;
-            }
+            Some(ZeroRun(n)) if word == 0 => *n += 1,
             // extend an existing one‐run
-            Some(OneRun(n))  if *n > 0 && word == !0 => {
-                *n += 1;
-            }
+            Some(OneRun(n)) if word == !0 => *n += 1,
             // otherwise, we need a new segment
-            _ => {
-                let seg = if word == 0 {
-                    ZeroRun(1)
-                } else if word == !0 {
-                    OneRun(1)
-                } else {
-                    Literal(word)
-                };
-                self.segments.push(seg);
-            }
+            _ => self.segments.push(match word {
+                0 => ZeroRun(1),
+                0xffffffffffffffff => OneRun(1),
+                _ => Literal(word),
+            })
         }
     }
 
