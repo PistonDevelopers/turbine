@@ -49,8 +49,9 @@ pub fn chunk_iter(
     list: &[Triangle],
     masks: &CompressedMasks
 ) -> impl Iterator<Item = (usize, (Chunk<Triangle>, u64))> + Clone {
-    masks.iter().map(|(i, _)| {
+    masks.iter().map(|(i, w)| {
         let i = i * 64;
-        (i, triangle_chunk(&list[i..]))
-    })
+        let (chunk, m) = triangle_chunk(&list[i..]);
+        (i, (chunk, m & w))
+    }).filter(|(_, (_, w))| *w != 0)
 }
