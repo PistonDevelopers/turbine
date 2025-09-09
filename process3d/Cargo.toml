@@ -11,4 +11,5 @@ homepage = "https://github.com/PistonDevelopers/turbine"
 documentation = "https://docs.rs/turbine_process3d"
 
 [dependencies]
-
+vecmath = "1.0.0"
+piston3d-cam = "0.7.0"

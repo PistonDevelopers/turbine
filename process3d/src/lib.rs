@@ -2,7 +2,31 @@
 #![doc = include_str!("../README.md")]
 #![deny(missing_docs)]
 
+pub use cam;
+
+pub mod cube;
+pub mod frustrum;
 pub mod mask;
+pub mod math;
+pub mod quad;
+pub mod ray;
+pub mod tile;
+pub mod triangle;
+
+/// Default prelude.
+pub mod prelude {
+    pub use crate::{
+        *,
+        cam::*,
+        cube::*,
+        frustrum::*,
+        math::*,
+        quad::*,
+        ray::*,
+        tile::*,
+        triangle::*,
+    };
+}
 
 /// RGB color.
 pub type Rgb<T = f32> = [T; 3];
@@ -42,6 +66,10 @@ pub type Aabb<T = f32> = (Point<T>, Point<T>);
 pub type UvAabb<T = f32> = (Uv<T>, Uv<T>);
 /// Ray hit result.
 pub type RayHit<T = f32> = Option<(T, usize)>;
+/// Standard chunk of 64 items.
+///
+/// This is designed to fit a 64 bit mask.
+pub type Chunk<T> = [T; 64];
 
 #[cfg(test)]
 mod tests {
