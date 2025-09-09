@@ -37,7 +37,7 @@ pub fn triangle_chunk(list: &[Triangle]) -> (Chunk<Triangle>, u64) {
     for i in 0..n {
         chunk[i] = list[i];
     }
-    (chunk, unsafe {(1_u64 << n as u32).unchecked_sub(1)})
+    (chunk, 1_u64.checked_shl(n as u32).unwrap_or(0).wrapping_sub(1))
 }
 
 /// Enumerate triangle chunks in list according to a mask.
