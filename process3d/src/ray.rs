@@ -63,6 +63,13 @@ pub fn ray_triangle_chunk_hit(
     min
 }
 
+/// Offset ray hit index.
+pub fn ray_hit_offset(hit: RayHit, off: usize) -> RayHit {
+    if let Some((d, i)) = hit {
+        Some((d, i + off))
+    } else {None}
+}
+
 /// Ray hit of triangle chunk with mask, updating hit.
 pub fn ray_triangle_chunk_hit_update(
     ray: Ray,
@@ -71,10 +78,10 @@ pub fn ray_triangle_chunk_hit_update(
     off: usize,
     res: &mut RayHit,
 ) {
-    *res = match (*res, ray_triangle_chunk_hit(ray, &chunk, mask)) {
+    *res = match (*res, ray_hit_offset(ray_triangle_chunk_hit(ray, &chunk, mask), off)) {
         (None, x) | (x, None) => x,
         (Some((ti, mi)), Some((tj, mj))) => {
-            if tj < ti {Some((tj, off + mj))} else {Some((ti, mi))}
+            if tj < ti {Some((tj, mj))} else {Some((ti, mi))}
         }
     }
 }
