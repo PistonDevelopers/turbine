@@ -1,6 +1,6 @@
 //! Tile rendering algorithms.
 
-use crate::{PixelPos, Point, TilePos, Triangle, Uv};
+use crate::{PixelPos, Point, RayHit, TilePos, Triangle, Uv};
 use crate::cam::CameraPerspective;
 use crate::frustrum::{
     frustum_planes_tile,
@@ -117,7 +117,7 @@ pub fn render_tile_depth(
     n_tile_size: u32,
     list: &[Triangle],
     masks: &CompressedMasks,
-    tile: &mut [Option<(f32, usize)>],
+    tile: &mut [RayHit],
 ) {
     let eye = [0.0; 3];
     let iter = chunk_iter(list, masks);
