@@ -13,6 +13,7 @@
 //! For more information, see the [Consumer] trait.
 
 use crate::{Aabb, Consume, Cube, Point, Triangle, Quad};
+use std::sync::mpsc::Sender;
 
 /// Implemented by data structures that consume something.
 ///
@@ -53,6 +54,12 @@ pub trait Consumer<T> {
 
 impl<T> Consumer<T> for Vec<T> {
     fn consumer(&self) -> Consume<Self, T> {Vec::push}
+}
+
+impl<T> Consumer<T> for Sender<T> {
+    fn consumer(&self) -> Consume<Self, T> {
+        |s, d| s.send(d).expect("Sending data on channel failed")
+    }
 }
 
 impl<T, Material> Consumer<(Quad, Material)> for T
