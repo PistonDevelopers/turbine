@@ -53,3 +53,8 @@ pub fn lerp_line((a, b): Line, t: f32) -> Point {
 
     add(a, scale(sub(b, a), t))
 }
+
+/// Linear interpolate scalars using a parameter.
+pub fn lerp(a: f32, b: f32, t: f32) -> f32 {
+    a + (b - a) * t
+}
