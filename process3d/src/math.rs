@@ -1,10 +1,18 @@
 //! Mathematical algorithms.
 
-pub use vecmath::mat4_id;
+pub use vecmath::{
+    mat4_id,
+    mat4_transposed,
+};
 
 use crate::{Line, Matrix4, Point, Triangle};
 
 /// Transform point.
+///
+/// This transform is row-major, which is standard mathematical notation.
+/// To convert column-major to row-major, use `mat4_transposed`.
+///
+/// Notice! In OpenGL matrices are column-major.
 pub fn transform_point(mat: &Matrix4, p: Point) -> Point {
     [
         mat[0][0] * p[0] + mat[0][1] * p[1] + mat[0][2] * p[2] + mat[0][3],
@@ -14,11 +22,21 @@ pub fn transform_point(mat: &Matrix4, p: Point) -> Point {
 }
 
 /// Transform triangle.
+///
+/// This transform is row-major, which is standard mathematical notation.
+/// To convert column-major to row-major, use `mat4_transposed`.
+///
+/// Notice! In OpenGL matrices are column-major.
 pub fn transform_triangle(mat: &Matrix4, (a, b, c): Triangle) -> Triangle {
     (transform_point(mat, a), transform_point(mat, b), transform_point(mat, c))
 }
 
 /// Transform triangle through model and view.
+///
+/// This transform is row-major, which is standard mathematical notation.
+/// To convert column-major to row-major, use `mat4_transposed`.
+///
+/// Notice! In OpenGL matrices are column-major.
 pub fn transform_view_model_triangle(
     view: &Matrix4,
     model: &Matrix4,
