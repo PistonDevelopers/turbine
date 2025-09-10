@@ -4,6 +4,7 @@
 
 pub use cam;
 
+pub mod consume;
 pub mod cube;
 pub mod frustrum;
 pub mod mask;
@@ -18,6 +19,7 @@ pub mod prelude {
     pub use crate::{
         *,
         cam::*,
+        consume::*,
         cube::*,
         frustrum::*,
         math::*,
@@ -70,6 +72,10 @@ pub type RayHit<T = f32> = Option<(T, usize)>;
 ///
 /// This is designed to fit a 64 bit mask.
 pub type Chunk<T> = [T; 64];
+/// Standard consume function.
+///
+/// This is used to simplify processing over customized data structures.
+pub type Consume<T, U> = fn(&mut T, U);
 
 #[cfg(test)]
 mod tests {
