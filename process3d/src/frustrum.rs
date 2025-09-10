@@ -1,6 +1,6 @@
 //! Frustrum algorithms.
 
-use crate::{Aabb, Chunk, Plane, Point, Triangle, Uv};
+use crate::{Aabb, Chunk, Plane, Point, RayHit, Triangle, Uv};
 use crate::triangle::{triangle_aabb, triangle_plane};
 use cam::CameraPerspective;
 
@@ -154,6 +154,10 @@ pub fn frustum_planes_triangle_chunk_mask(
 }
 
 /// Linear transformation of depth using near and far clip distance.
-pub fn depth_linear(persp: &CameraPerspective, depth: Option<(f32, usize)>) -> f32 {
-    if let Some((t, _)) = depth {(t - persp.near_clip) / (persp.far_clip - persp.near_clip)} else {1.0}
+pub fn depth_linear(persp: &CameraPerspective, depth: RayHit) -> f32 {
+    if let Some((t, _)) = depth {
+        (t - persp.near_clip) / (persp.far_clip - persp.near_clip)
+    } else {
+        1.0
+    }
 }
