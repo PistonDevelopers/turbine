@@ -1,6 +1,7 @@
 //! Cube algorithms.
 
 use crate::{Aabb, Quad, Cube};
+use crate::consume::Consumer;
 
 /// Convert AABB to cube.
 pub fn aabb_to_cube((mi, ma): Aabb) -> Cube {
@@ -44,4 +45,12 @@ pub fn cube_bottom(cube: &Cube) -> Quad {
 /// Cube top quad.
 pub fn cube_top(cube: &Cube) -> Quad {
     [cube[6], cube[7], cube[2], cube[3]]
+}
+
+/// Adds AABB cube to consumer.
+pub fn add_cube_aabb<Scene, Material>(scene: &mut Scene, aabb: Aabb, mat: Material)
+    where Scene: Consumer<(Aabb, Material)>, Material: Copy
+{
+    let f = scene.consumer();
+    f(scene, (aabb, mat));
 }
