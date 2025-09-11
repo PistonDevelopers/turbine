@@ -5,7 +5,7 @@ pub use vecmath::{
     mat4_transposed,
 };
 
-use crate::{Line, Matrix4, Point, Triangle};
+use crate::{Line, Matrix4, Point, Rgb, Rgba, Triangle};
 
 /// Transform point.
 ///
@@ -52,6 +52,32 @@ pub fn lerp_line((a, b): Line, t: f32) -> Point {
     use vecmath::vec3_scale as scale;
 
     add(a, scale(sub(b, a), t))
+}
+
+/// Linear interpolate RGB using a parameter.
+pub fn lerp_rgb(a: Rgb, b: Rgb, t: f32) -> Rgb {
+    use crate::color::{rgb_gamma_linear_to_srgb, rgb_gamma_srgb_to_linear};
+
+    use vecmath::vec3_add as add;
+    use vecmath::vec3_sub as sub;
+    use vecmath::vec3_scale as scale;
+
+    let a = rgb_gamma_srgb_to_linear(a);
+    let b = rgb_gamma_srgb_to_linear(b);
+    rgb_gamma_linear_to_srgb(add(a, scale(sub(b, a), t)))
+}
+
+/// Linear interpolate RGBA using a parameter.
+pub fn lerp_rgba(a: Rgba, b: Rgba, t: f32) -> Rgba {
+    use crate::color::{rgba_gamma_linear_to_srgb, rgba_gamma_srgb_to_linear};
+
+    use vecmath::vec4_add as add;
+    use vecmath::vec4_sub as sub;
+    use vecmath::vec4_scale as scale;
+
+    let a = rgba_gamma_srgb_to_linear(a);
+    let b = rgba_gamma_srgb_to_linear(b);
+    rgba_gamma_linear_to_srgb(add(a, scale(sub(b, a), t)))
 }
 
 /// Linear interpolate scalars using a parameter.
