@@ -200,6 +200,8 @@ impl<T: IntoCube> Produce<Triangle> for [T] {
                 }
             }
             1 => {
+                if list.len() == 0 {return chunk};
+
                 let cube = &list[0].into_cube();
                 let quads = [
                     cube_far(cube),
@@ -261,6 +263,8 @@ impl<T: IntoCube> Produce<Triangle> for [T] {
                 }
             }
             2 => {
+                if list.len() == 0 {return chunk};
+
                 let cube = &list[0].into_cube();
                 let quads = [
                     cube_near(cube),
@@ -319,6 +323,8 @@ impl<T: IntoCube> Produce<Triangle> for [T] {
                 }
             }
             3 => {
+                if list.len() == 0 {return chunk};
+
                 let cube = &list[0].into_cube();
                 let quads = [
                     cube_near(cube),
@@ -382,6 +388,8 @@ impl<T: IntoCube> Produce<Triangle> for [T] {
                 }
             }
             4 => {
+                if list.len() == 0 {return chunk};
+
                 let cube = &list[0].into_cube();
                 let quads = [
                     cube_top(cube),
@@ -442,6 +450,8 @@ impl<T: IntoCube> Produce<Triangle> for [T] {
                 }
             }
             5 => {
+                if list.len() == 0 {return chunk};
+
                 let cube = &list[0].into_cube();
                 let quads = [
                     cube_top(cube),
@@ -505,6 +515,8 @@ impl<T: IntoCube> Produce<Triangle> for [T] {
                 }
             }
             6 => {
+                if list.len() == 0 {return chunk};
+
                 let cube = &list[0].into_cube();
                 let quads = [
                     cube_bottom(cube),
@@ -565,6 +577,8 @@ impl<T: IntoCube> Produce<Triangle> for [T] {
                 }
             }
             7 => {
+                if list.len() == 0 {return chunk};
+
                 let cube = &list[0].into_cube();
                 let quads = [
                     cube_bottom(cube),
@@ -628,6 +642,8 @@ impl<T: IntoCube> Produce<Triangle> for [T] {
                 }
             }
             8 => {
+                if list.len() == 0 {return chunk};
+
                 let cube = &list[0].into_cube();
                 let quads = [
                     cube_left(cube),
@@ -688,6 +704,8 @@ impl<T: IntoCube> Produce<Triangle> for [T] {
                 }
             }
             9 => {
+                if list.len() == 0 {return chunk};
+
                 let cube = &list[0].into_cube();
                 let quads = [
                     cube_left(cube),
@@ -751,6 +769,8 @@ impl<T: IntoCube> Produce<Triangle> for [T] {
                 }
             }
             10 => {
+                if list.len() == 0 {return chunk};
+
                 let cube = &list[0].into_cube();
                 let quad = cube_right(cube);
                 // Right.
@@ -809,6 +829,8 @@ impl<T: IntoCube> Produce<Triangle> for [T] {
                 }
             }
             _ => {
+                if list.len() == 0 {return chunk};
+
                 let cube = &list[0].into_cube();
                 let quad = cube_right(cube);
                 // Right.
