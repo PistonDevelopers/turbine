@@ -79,27 +79,36 @@ pub fn tile_grid(dim: PixelPos, tile_size: u32) -> [u32; 2] {
     [tw as u32, th as u32]
 }
 
+/// Prepare compressed masks.
+pub fn pre_masks(
+    dim: PixelPos,
+    n_tile_size: u32,
+) -> Vec<CompressedMasks> {
+    let [w, h] = tile_grid(dim, n_tile_size);
+    let n = w * h;
+    vec![CompressedMasks::new(); n as usize]
+}
+
 /// Collect all masks per tile.
 pub fn masks(
     persp: &CameraPerspective,
     dim: PixelPos,
     n_tile_size: u32,
     list: &[Triangle],
-) -> Vec<CompressedMasks> {
-    let [w, h] = tile_grid(dim, n_tile_size);
-    let n = w * h;
-    let mut ret: Vec<CompressedMasks> = Vec::with_capacity(n as usize);
+    masks: &mut [CompressedMasks]
+) {
+    use rayon::prelude::*;
+
+    let w = tile_grid(dim, n_tile_size)[0];
     let ndim = near_dim(&persp);
-    for j in 0..h {
-        for i in 0..w {
-            let mut masks = CompressedMasks::new();
-            let tpos = tile_pos(dim, [i, j], n_tile_size);
-            let tsize = tile_size(dim, [i, j], n_tile_size);
-            tile_mask(persp, ndim, tpos, tsize, list, &mut masks);
-            ret.push(masks);
-        }
-    }
-    ret
+    masks.par_iter_mut().enumerate().for_each(|(k,  masks)| {
+        masks.clear();
+        let i = k as u32 % w;
+        let j = k as u32 / w;
+        let tpos = tile_pos(dim, [i, j], n_tile_size);
+        let tsize = tile_size(dim, [i, j], n_tile_size);
+        tile_mask(persp, ndim, tpos, tsize, list, masks);
+    });
 }
 
 /// Render depth of a tile using a camera perspective, image resolution,

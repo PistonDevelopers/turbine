@@ -13,3 +13,4 @@ documentation = "https://docs.rs/turbine_process3d"
 [dependencies]
 vecmath = "1.0.0"
 piston3d-cam = "0.7.0"
+rayon = "1.11.0"
