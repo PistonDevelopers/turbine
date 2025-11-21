@@ -5,7 +5,7 @@ pub use vecmath::{
     mat4_transposed,
 };
 
-use crate::{Line, Matrix4, Point, Rgb, Rgba, Triangle};
+use crate::{Chunk, Cube, Line, Matrix4, Point, Quad, Rgb, Rgba, Triangle};
 
 /// Transform point.
 ///
@@ -29,6 +29,39 @@ pub fn transform_point(mat: &Matrix4, p: Point) -> Point {
 /// Notice! In OpenGL matrices are column-major.
 pub fn transform_triangle(mat: &Matrix4, (a, b, c): Triangle) -> Triangle {
     (transform_point(mat, a), transform_point(mat, b), transform_point(mat, c))
+}
+
+/// Transforms chunk.
+pub fn transform_chunk(mat: &Matrix4, chunk: &mut Chunk<Triangle>) {
+    for i in 0..64 {
+        chunk[i] = transform_triangle(mat, chunk[i]);
+    }
+}
+
+/// Transform quad.
+///
+/// This transform is row-major, which is standard mathematical notation.
+/// To convert column-major to row-major, use `mat4_transposed`.
+///
+/// Notice! In OpenGL matrices are column-major.
+pub fn transform_quad(mat: &Matrix4, [a, b, c, d]: Quad) -> Quad {
+    [transform_point(mat, a), transform_point(mat, b),
+     transform_point(mat, c), transform_point(mat, d)]
+}
+
+/// Transform cube.
+///
+/// This transform is row-major, which is standard mathematical notation.
+/// To convert column-major to row-major, use `mat4_transposed`.
+///
+/// Notice! In OpenGL matrices are column-major.
+pub fn transform_cube(mat: &Matrix4, [a, b, c, d, e, f, g, h]: Cube) -> Cube {
+    [
+        transform_point(mat, a), transform_point(mat, b),
+        transform_point(mat, c), transform_point(mat, d),
+        transform_point(mat, e), transform_point(mat, f),
+        transform_point(mat, g), transform_point(mat, h),
+    ]
 }
 
 /// Transform triangle through model and view.

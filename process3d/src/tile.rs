@@ -10,26 +10,27 @@ use crate::frustrum::{
 use crate::mask::CompressedMasks;
 use crate::ray::{ray_dir, ray_triangle_chunk_hit_update};
 use crate::triangle::{chunk_iter, triangle_chunk};
+use crate::produce::Produce;
 
 /// From camera perspective, tile and a list of triangles, get mask of intersecting triangles.
 ///
 /// This is used as a preparation stage before sampling each tile in parallel.
 ///
 /// The algorithm does not clear the masks before pushing new ones.
-pub fn tile_mask(
+pub fn tile_mask<T: Produce<Triangle> + ?Sized>(
     persp: &CameraPerspective,
     dim: Uv,
     tile_pos: Uv,
     tile_size: Uv,
-    list: &[Triangle],
+    list: &T,
     masks: &mut CompressedMasks,
 ) {
     let fr = frustum_planes_tile(persp, dim, tile_pos, tile_size);
     let mut i = 0;
-    let n = list.len();
+    let n = list.virtual_length();
     loop {
         if i >= n {break}
-        let (chunk, bits) = triangle_chunk(&list[i..]);
+        let (chunk, bits) = triangle_chunk(list, i);
         masks.push(frustum_planes_triangle_chunk_mask(&fr, &chunk, bits));
         i += 64;
     }
@@ -90,11 +91,11 @@ pub fn pre_masks(
 }
 
 /// Collect all masks per tile.
-pub fn masks(
+pub fn masks<T: Produce<Triangle> + ?Sized + Sync>(
     persp: &CameraPerspective,
     dim: PixelPos,
     n_tile_size: u32,
-    list: &[Triangle],
+    list: &T,
     masks: &mut [CompressedMasks]
 ) {
     use rayon::prelude::*;
@@ -119,12 +120,12 @@ pub fn masks(
 /// Ray direction is recreated for each triangle chunk.
 ///
 /// Requires compressed masks per tile to be prepared in advance.
-pub fn render_tile_depth(
+pub fn render_tile_depth<T: Produce<Triangle> + ?Sized>(
     persp: &CameraPerspective,
     dim: PixelPos,
     pos: PixelPos,
     n_tile_size: u32,
-    list: &[Triangle],
+    list: &T,
     masks: &CompressedMasks,
     tile: &mut [RayHit],
 ) {
