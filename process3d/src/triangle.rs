@@ -2,6 +2,7 @@
 
 use crate::{Aabb, Chunk, Plane, Triangle};
 use crate::mask::CompressedMasks;
+use crate::produce::*;
 
 /// Calculates plane of triangle.
 pub fn triangle_plane((a, b, c): Triangle) -> Plane {
@@ -31,13 +32,11 @@ pub fn triangle_aabb((a, b, c): Triangle) -> Aabb {
 /// Get triangle chunk from a slice of triangles with a mask.
 ///
 /// The number of enabled bits in the mask tells the size of the triangle chunk.
-pub fn triangle_chunk(list: &[Triangle]) -> (Chunk<Triangle>, u64) {
-    let mut chunk = [([0.0; 3], [0.0; 3], [0.0; 3]); 64];
-    let n = list.len().min(64);
-    for i in 0..n {
-        chunk[i] = list[i];
-    }
-    (chunk, 1_u64.checked_shl(n as u32).unwrap_or(0).wrapping_sub(1))
+#[inline(always)]
+pub fn triangle_chunk<T>(list: &T, offset: usize) -> (Chunk<Triangle>, u64)
+    where T: Produce<Triangle> + ?Sized
+{
+    (list.produce(offset), init_chunk_mask((&*list).virtual_length(), offset))
 }
 
 /// Enumerate triangle chunks in list according to a mask.
@@ -45,13 +44,13 @@ pub fn triangle_chunk(list: &[Triangle]) -> (Chunk<Triangle>, u64) {
 /// Skips the chunks which a zero mask.
 ///
 /// Provides an offset index of the chunk.
-pub fn chunk_iter(
-    list: &[Triangle],
+pub fn chunk_iter<T: Produce<Triangle> + ?Sized>(
+    list: &T,
     masks: &CompressedMasks
 ) -> impl Iterator<Item = (usize, (Chunk<Triangle>, u64))> + Clone {
     masks.iter().map(|(i, w)| {
         let i = i * 64;
-        let (chunk, m) = triangle_chunk(&list[i..]);
+        let (chunk, m) = triangle_chunk(list, i);
         (i, (chunk, m & w))
     }).filter(|(_, (_, w))| *w != 0)
 }

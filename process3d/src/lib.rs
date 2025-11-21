@@ -10,6 +10,7 @@ pub mod cube;
 pub mod frustrum;
 pub mod mask;
 pub mod math;
+pub mod produce;
 pub mod quad;
 pub mod ray;
 pub mod tile;
@@ -25,6 +26,7 @@ pub mod prelude {
         cube::*,
         frustrum::*,
         math::*,
+        produce::*,
         quad::*,
         ray::*,
         tile::*,
@@ -107,9 +109,9 @@ mod tests {
 
     #[test]
     fn test_triangle_chunk() {
-        let list = vec![([0.0; 3], [0.0; 3], [0.0; 3]); 72];
-        let a = triangle::triangle_chunk(&list);
-        let b = triangle::triangle_chunk(&list[64..]);
+        let list: Vec<Triangle> = vec![([0.0; 3], [0.0; 3], [0.0; 3]); 72];
+        let a = triangle::triangle_chunk(&list, 0);
+        let b = triangle::triangle_chunk(&list[64..], 0);
         assert_eq!(a.1, 0xffffffffffffffff);
         assert_eq!(b.1, 0xff);
     }
