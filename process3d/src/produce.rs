@@ -8,6 +8,10 @@ pub trait Produce<T> {
     fn virtual_length(&self) -> usize;
     /// Produce a chunk at some offset.
     fn produce(&self, offset: usize) -> Chunk<T>;
+    /// Converts from chunk offset address space to internal memory.
+    ///
+    /// Returns `None` if there is no corresponding internal memory.
+    fn to_internal(&self, offset: usize) -> Option<usize>;
 }
 
 /// Gets the initial chunk mask.
@@ -35,6 +39,10 @@ impl<'a, T> Produce<Triangle> for TransformProducer<'a, T>
         crate::math::transform_chunk(&self.matrix, &mut chunk);
         chunk
     }
+    #[inline(always)]
+    fn to_internal(&self, offset: usize) -> Option<usize> {
+        self.inner.to_internal(offset)
+    }
 }
 
 impl<T: Default + Copy> Produce<T> for [T] {
@@ -49,6 +57,10 @@ impl<T: Default + Copy> Produce<T> for [T] {
         }
         chunk
     }
+    #[inline(always)]
+    fn to_internal(&self, offset: usize) -> Option<usize> {
+        Some(offset)
+    }
 }
 
 impl<T> Produce<T> for Vec<T>
@@ -61,6 +73,10 @@ impl<T> Produce<T> for Vec<T>
     #[inline(always)]
     fn produce(&self, offset: usize) -> Chunk<T> {
         <[T] as Produce::<T>>::produce(self, offset)
+    }
+    #[inline(always)]
+    fn to_internal(&self, offset: usize) -> Option<usize> {
+        <[T] as Produce::<T>>::to_internal(self, offset)
     }
 }
 
@@ -101,6 +117,10 @@ impl Produce<Triangle> for [Quad] {
             }
         }
         chunk
+    }
+    #[inline(always)]
+    fn to_internal(&self, offset: usize) -> Option<usize> {
+        Some(offset / 2)
     }
 }
 
@@ -893,5 +913,9 @@ impl<T: IntoCube> Produce<Triangle> for [T] {
             }
         }
         chunk
+    }
+    #[inline(always)]
+    fn to_internal(&self, offset: usize) -> Option<usize> {
+        Some(offset / 12)
     }
 }
