@@ -161,6 +161,23 @@ macro_rules! into_cube_impl {
                     ))
                 }
             }
+
+            impl IntoCube for Cube<$t> {
+                #[inline(always)]
+                fn into_cube(self) -> Cube {
+                    let [a, b, c, d, e, f, g, h] = self;
+                    [
+                        [a[0] as f32, a[1] as f32, a[2] as f32],
+                        [b[0] as f32, b[1] as f32, b[2] as f32],
+                        [c[0] as f32, c[1] as f32, c[2] as f32],
+                        [d[0] as f32, d[1] as f32, d[2] as f32],
+                        [e[0] as f32, e[1] as f32, e[2] as f32],
+                        [f[0] as f32, f[1] as f32, f[2] as f32],
+                        [g[0] as f32, g[1] as f32, g[2] as f32],
+                        [h[0] as f32, h[1] as f32, h[2] as f32],
+                    ]
+                }
+            }
         )*
     };
 }
