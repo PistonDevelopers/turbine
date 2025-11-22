@@ -72,6 +72,11 @@ pub type Aabb<T = f32> = (Point<T>, Point<T>);
 pub type UvAabb<T = f32> = (Uv<T>, Uv<T>);
 /// Ray hit result.
 pub type RayHit<T = f32> = Option<(T, usize)>;
+/// Ray hit all result.
+///
+/// Uses an index flag, since the index is used to filter masks.
+/// When the flag is true, it means the ray hit something new.
+pub type RayHitAll<T = f32> = Option<(T, IndexFlag)>;
 /// Standard chunk of 64 items.
 ///
 /// This is designed to fit a 64 bit mask.
@@ -80,6 +85,29 @@ pub type Chunk<T> = [T; 64];
 ///
 /// This is used to simplify processing over customized data structures.
 pub type Consume<T, U> = fn(&mut T, U);
+
+/// Used to store both an index and a flag in 64 bits.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct IndexFlag(pub i64);
+
+impl IndexFlag {
+    /// Get the index.
+    #[inline(always)]
+    pub fn index(&self) -> usize {
+        if self.0 < 0 {(-(self.0 + 1)) as usize} else {self.0 as usize}
+    }
+    /// Get the flag.
+    #[inline(always)]
+    pub fn flag(&self) -> bool {self.0 < 0}
+    /// Sets the flag to false.
+    #[inline(always)]
+    pub fn unflag(self) -> IndexFlag {IndexFlag::from_parts(self.index(), false)}
+    /// Create index-flag from index and flag.
+    #[inline(always)]
+    pub fn from_parts(ind: usize, flag: bool) -> IndexFlag {
+        IndexFlag(if flag {-(ind as i64) - 1} else {ind as i64})
+    }
+}
 
 #[cfg(test)]
 mod tests {
