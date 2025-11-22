@@ -1,6 +1,6 @@
 //! Tile rendering algorithms.
 
-use crate::{PixelPos, Point, RayHit, TilePos, Triangle, Uv};
+use crate::{PixelPos, Point, RayHit, RayHitAll, TilePos, Triangle, Uv};
 use crate::cam::CameraPerspective;
 use crate::frustrum::{
     frustum_planes_tile,
@@ -8,7 +8,7 @@ use crate::frustrum::{
     near_dim,
 };
 use crate::mask::CompressedMasks;
-use crate::ray::{ray_dir, ray_triangle_chunk_hit_update};
+use crate::ray::{ray_dir, ray_triangle_chunk_hit_update, ray_triangle_chunk_hit_all_update};
 use crate::triangle::{chunk_iter, triangle_chunk};
 use crate::produce::Produce;
 
@@ -140,4 +140,61 @@ pub fn render_tile_depth<T: Produce<Triangle> + ?Sized>(
             }
         }
     }
+}
+
+/// Render depth of a tile using a camera perspective, image resolution,
+/// tile position, tile size and triangle list with mask, into a tile depth and index buffer.
+///
+/// This can be used to render semi-transparent objects,
+/// because the ray visits all triangles.
+///
+/// Notice that there is no guaranteed order.
+/// This has to be managed either by pre-ordering or by post-processing.
+///
+/// `RayHitAll` in `tile` should be initialized to `Some((0.0, IndexFlag::from_parts(0, false)))`.
+/// When `None`, the ray will not progress further.
+/// Check `IndexFlag::flag` to see whether the ray hit something new.
+///
+/// Iterates through all triangles in chunks and updates the tile depth and index buffer.
+///
+/// Ray direction is recreated for each triangle chunk.
+///
+/// Requires compressed masks per tile to be prepared in advance.
+///
+/// Returns `true` if there is something to render.
+/// You can use a loop and break when this is `false`.
+pub fn render_tile_depth_all<T: Produce<Triangle> + ?Sized>(
+    persp: &CameraPerspective,
+    dim: PixelPos,
+    pos: PixelPos,
+    n_tile_size: u32,
+    list: &T,
+    masks: &CompressedMasks,
+    tile: &mut [RayHitAll],
+) -> bool {
+    let eye = [0.0; 3];
+    let iter = chunk_iter(list, masks);
+    let mut alive = false;
+    for (off, (chunk, mask)) in iter {
+        alive = false;
+        for j in 0..n_tile_size {
+            for i in 0..n_tile_size {
+                let hit = &mut tile[(j * n_tile_size + i) as usize];
+                let dir: Point = ray_dir(persp, eye, [pos[0] + i, pos[1] + j], dim);
+                ray_triangle_chunk_hit_all_update((eye, dir), &chunk, mask, off, hit);
+                alive |= hit.is_some();
+            }
+        }
+        // Skip iteration if there no rays alive or nothing to render.
+        if !alive {return false}
+    }
+
+    // Terminate rays when not hitting anything new.
+    for hit in tile {
+        if let Some((_, index_flag)) = hit {
+            if !index_flag.flag() {*hit = None};
+        }
+    }
+
+    alive
 }

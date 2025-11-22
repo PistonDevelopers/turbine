@@ -1,8 +1,15 @@
 //! Ray algorithms.
 
-use crate::{Chunk, PixelPos, Point, Ray, RayHit, Triangle};
+use crate::{Chunk, IndexFlag, PixelPos, Point, Ray, RayHit, RayHitAll, Triangle};
 use crate::frustrum::{near_dim, near_uv_pos};
 use crate::cam::CameraPerspective;
+
+/// Converts `RayHitAll` to `RayHit`.
+pub fn ray_hit_all_to_ray_hit(hit: RayHitAll) -> RayHit {
+    if let Some((depth, index_flag)) = hit {
+        Some((depth, index_flag.index()))
+    } else {None}
+}
 
 /// Ray triangle intersection using Möller-Trumbore algorithm.
 pub fn ray_triangle_hit((origin, direction): Ray, (a, b, c): Triangle) -> Option<f32> {
@@ -63,6 +70,27 @@ pub fn ray_triangle_chunk_hit(
     min
 }
 
+/// Ray intersection against all triangles in chunk with a mask.
+///
+/// This is used when rendering semi-transparent objects.
+/// The mask is used to filter out previous objects.
+pub fn ray_triangle_chunk_hit_all(
+    ray: Ray,
+    chunk: &Chunk<Triangle>,
+    mask: u64,
+) -> RayHit {
+    if mask == 0 {return None};
+
+    for i in 0..64 {
+        if (mask >> i) & 1 == 1 {
+            if let Some(t) = ray_triangle_hit(ray, chunk[i]) {
+                return Some((t, i));
+            }
+        }
+    }
+    None
+}
+
 /// Offset ray hit index.
 pub fn ray_hit_offset(hit: RayHit, off: usize) -> RayHit {
     if let Some((d, i)) = hit {
@@ -83,6 +111,28 @@ pub fn ray_triangle_chunk_hit_update(
         (Some((ti, mi)), Some((tj, mj))) => {
             if tj < ti {Some((tj, mj))} else {Some((ti, mi))}
         }
+    }
+}
+
+/// Ray hit of all triangles in chunk with mask, updating hit.
+///
+/// A new mask is pre-computed to filter out previous hits in the chunk.
+pub fn ray_triangle_chunk_hit_all_update(
+    ray: Ray,
+    chunk: &Chunk<Triangle>,
+    mask: u64,
+    off: usize,
+    res: &mut RayHitAll,
+) {
+    let mask = if let Some((_, ind)) = *res {
+        let ind = if ind.flag() {return} else {ind.index()};
+        if ind >= off + 64 {return} else if ind >= off {
+            !((1_u64 << (ind - off)) - 1) & mask
+        } else {mask}
+    } else {return};
+    *res = match (*res, ray_hit_offset(ray_triangle_chunk_hit_all(ray, &chunk, mask), off)) {
+        (x, None) => x,
+        (_, Some((tj, mj))) => Some((tj, IndexFlag::from_parts(mj, true))),
     }
 }
 
