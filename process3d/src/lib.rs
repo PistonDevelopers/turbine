@@ -4,6 +4,7 @@
 
 pub use cam;
 
+pub mod acc;
 pub mod color;
 pub mod consume;
 pub mod cube;
@@ -21,6 +22,7 @@ pub mod triangle;
 pub mod prelude {
     pub use crate::{
         *,
+        acc::*,
         cam::*,
         color::*,
         consume::*,
