@@ -1,6 +1,6 @@
 //! Triangle algorithms.
 
-use crate::{Aabb, Chunk, Plane, Triangle};
+use crate::{Aabb, Chunk, Point, Plane, Triangle};
 use crate::mask::CompressedMasks;
 use crate::produce::*;
 
@@ -27,6 +27,12 @@ pub fn triangle_aabb((a, b, c): Triangle) -> Aabb {
     let maxy = a[1].max(b[1]).max(c[1]);
     let maxz = a[2].max(b[2]).max(c[2]);
     ([minx, miny, minz], [maxx, maxy, maxz])
+}
+
+/// Returns true if point is front of triangle.
+pub fn triangle_point_front(tri: Triangle, p: Point) -> bool {
+    use crate::frustrum::plane_point_front;
+    plane_point_front(triangle_plane(tri), p)
 }
 
 /// Get triangle chunk from a slice of triangles with a mask.

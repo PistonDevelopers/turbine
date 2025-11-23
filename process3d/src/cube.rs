@@ -4,7 +4,7 @@ use crate::{Aabb, Quad, Cube};
 use crate::consume::Consumer;
 
 /// Convert AABB to cube.
-pub fn aabb_to_cube((mi, ma): Aabb) -> Cube {
+pub fn aabb_to_cube<T: Copy>((mi, ma): Aabb<T>) -> Cube<T> {
     [
         mi,
         [ma[0], mi[1], mi[2]],
@@ -19,7 +19,7 @@ pub fn aabb_to_cube((mi, ma): Aabb) -> Cube {
 
 /// Cube near quad.
 pub fn cube_near(cube: &Cube) -> Quad {
-    [cube[0], cube[1], cube[2], cube[3]]
+    [cube[1], cube[0], cube[3], cube[2]]
 }
 
 /// Cube far quad.
@@ -39,12 +39,12 @@ pub fn cube_right(cube: &Cube) -> Quad {
 
 /// Cube bottom quad.
 pub fn cube_bottom(cube: &Cube) -> Quad {
-    [cube[0], cube[1], cube[4], cube[5]]
+    [cube[1], cube[0], cube[5], cube[4]]
 }
 
 /// Cube top quad.
 pub fn cube_top(cube: &Cube) -> Quad {
-    [cube[6], cube[7], cube[2], cube[3]]
+    [cube[3], cube[2], cube[7], cube[6]]
 }
 
 /// Adds AABB cube to consumer.
