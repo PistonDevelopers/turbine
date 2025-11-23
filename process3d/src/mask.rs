@@ -5,7 +5,7 @@
 /// - `ZeroRun(n)`:   represents `n` consecutive words of all‐zeros (`0x0000…`)
 /// - `OneRun(n)`:    represents `n` consecutive words of all‐ones  (`0xFFFF…`)
 /// - `Literal(w)`:   represents exactly one word with arbitrary bits
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Segment {
     /// Repeat `0x0000...`.
     ZeroRun(usize),
@@ -34,7 +34,10 @@ impl CompressedMasks {
 
     /// Clearn the content.
     pub fn clear(&mut self) {
-        self.segments.clear();
+        // Usually, should use `self.segments.clear()`,
+        // however, since `Segment` is `Copy` and has no destructor,
+        // it is less work for the compiler to optimize.
+        unsafe {self.segments.set_len(0)};
         self.len_words = 0;
     }
 
