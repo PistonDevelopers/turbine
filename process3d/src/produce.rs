@@ -162,6 +162,16 @@ macro_rules! into_cube_impl {
                 }
             }
 
+            impl IntoCube for Aabb<$t> {
+                #[inline(always)]
+                fn into_cube(self) -> Cube {
+                    let (a, b) = self;
+                    let a = [a[0] as f32, a[1] as f32, a[2] as f32];
+                    let b = [b[0] as f32, b[1] as f32, b[2] as f32];
+                    crate::cube::aabb_to_cube((a, b))
+                }
+            }
+
             impl IntoCube for Cube<$t> {
                 #[inline(always)]
                 fn into_cube(self) -> Cube {
