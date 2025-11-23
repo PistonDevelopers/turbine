@@ -7,6 +7,7 @@ pub use cam;
 pub mod color;
 pub mod consume;
 pub mod cube;
+pub mod fog;
 pub mod frustrum;
 pub mod mask;
 pub mod math;
@@ -24,6 +25,7 @@ pub mod prelude {
         color::*,
         consume::*,
         cube::*,
+        fog::*,
         frustrum::*,
         math::*,
         produce::*,
