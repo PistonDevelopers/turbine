@@ -303,10 +303,22 @@ impl<T: IntoCube> Produce<Triangle> for [T] {
 
                 if list.len() > n + 1 {
                     let cube = &list[n + 1].into_cube();
-                    let quad = cube_far(cube);
+                    let quads = [
+                        cube_far(cube),
+                        cube_near(cube),
+                        cube_top(cube),
+                    ];
                     // Far.
-                    let (a, _) = quad_to_triangles(quad);
+                    let (a, b) = quad_to_triangles(quads[0]);
                     chunk[n * 12 + 11] = a;
+                    chunk[n * 12 + 12] = b;
+                    // Naer.
+                    let (a, b) = quad_to_triangles(quads[1]);
+                    chunk[n * 12 + 13] = a;
+                    chunk[n * 12 + 14] = b;
+                    // Top.
+                    let (a, _) = quad_to_triangles(quads[2]);
+                    chunk[n * 12 + 15] = a;
                 }
             }
             2 => {
@@ -362,11 +374,23 @@ impl<T: IntoCube> Produce<Triangle> for [T] {
 
                 if list.len() > n + 1 {
                     let cube = &list[n + 1].into_cube();
-                    let quad = cube_far(cube);
+                    let quads = [
+                        cube_far(cube),
+                        cube_near(cube),
+                        cube_top(cube),
+                    ];
                     // Far.
-                    let (a, b) = quad_to_triangles(quad);
+                    let (a, b) = quad_to_triangles(quads[0]);
                     chunk[n * 12 + 10] = a;
                     chunk[n * 12 + 10 + 1] = b;
+                    // Near.
+                    let (a, b) = quad_to_triangles(quads[1]);
+                    chunk[n * 12 + 10 + 2] = a;
+                    chunk[n * 12 + 10 + 3] = b;
+                    // Top.
+                    let (a, b) = quad_to_triangles(quads[2]);
+                    chunk[n * 12 + 10 + 4] = a;
+                    chunk[n * 12 + 10 + 5] = b;
                 }
             }
             3 => {
@@ -424,14 +448,24 @@ impl<T: IntoCube> Produce<Triangle> for [T] {
                     let quads = [
                         cube_far(cube),
                         cube_near(cube),
+                        cube_top(cube),
+                        cube_bottom(cube),
                     ];
                     // Far.
                     let (a, b) = quad_to_triangles(quads[0]);
                     chunk[n * 12 + 9] = a;
                     chunk[n * 12 + 9 + 1] = b;
                     // Near.
-                    let (a, _) = quad_to_triangles(quads[1]);
+                    let (a, b) = quad_to_triangles(quads[1]);
                     chunk[n * 12 + 9 + 2] = a;
+                    chunk[n * 12 + 9 + 3] = b;
+                    // Top.
+                    let (a, b) = quad_to_triangles(quads[2]);
+                    chunk[n * 12 + 9 + 4] = a;
+                    chunk[n * 12 + 9 + 5] = b;
+                    // Bottom.
+                    let (a, _) = quad_to_triangles(quads[3]);
+                    chunk[n * 12 + 9 + 6] = a;
                 }
             }
             4 => {
@@ -485,6 +519,8 @@ impl<T: IntoCube> Produce<Triangle> for [T] {
                     let quads = [
                         cube_far(cube),
                         cube_near(cube),
+                        cube_top(cube),
+                        cube_bottom(cube),
                     ];
                     // Far.
                     let (a, b) = quad_to_triangles(quads[0]);
@@ -494,6 +530,14 @@ impl<T: IntoCube> Produce<Triangle> for [T] {
                     let (a, b) = quad_to_triangles(quads[1]);
                     chunk[n * 12 + 8 + 2] = a;
                     chunk[n * 12 + 8 + 3] = b;
+                    // Top.
+                    let (a, b) = quad_to_triangles(quads[2]);
+                    chunk[n * 12 + 8 + 4] = a;
+                    chunk[n * 12 + 8 + 5] = b;
+                    // Bot.
+                    let (a, b) = quad_to_triangles(quads[3]);
+                    chunk[n * 12 + 8 + 6] = a;
+                    chunk[n * 12 + 8 + 7] = b;
                 }
             }
             5 => {
@@ -547,6 +591,8 @@ impl<T: IntoCube> Produce<Triangle> for [T] {
                         cube_far(cube),
                         cube_near(cube),
                         cube_top(cube),
+                        cube_bottom(cube),
+                        cube_left(cube),
                     ];
                     // Far.
                     let (a, b) = quad_to_triangles(quads[0]);
@@ -557,8 +603,16 @@ impl<T: IntoCube> Produce<Triangle> for [T] {
                     chunk[n * 12 + 7 + 2] = a;
                     chunk[n * 12 + 7 + 3] = b;
                     // Top.
-                    let (a, _) = quad_to_triangles(quads[2]);
+                    let (a, b) = quad_to_triangles(quads[2]);
                     chunk[n * 12 + 7 + 4] = a;
+                    chunk[n * 12 + 7 + 5] = b;
+                    // Bottom.
+                    let (a, b) = quad_to_triangles(quads[3]);
+                    chunk[n * 12 + 7 + 6] = a;
+                    chunk[n * 12 + 7 + 7] = b;
+                    // Left.
+                    let (a, _) = quad_to_triangles(quads[4]);
+                    chunk[n * 12 + 7 + 8] = a;
                 }
             }
             6 => {
@@ -608,6 +662,8 @@ impl<T: IntoCube> Produce<Triangle> for [T] {
                         cube_far(cube),
                         cube_near(cube),
                         cube_top(cube),
+                        cube_bottom(cube),
+                        cube_left(cube),
                     ];
                     // Far.
                     let (a, b) = quad_to_triangles(quads[0]);
@@ -621,6 +677,14 @@ impl<T: IntoCube> Produce<Triangle> for [T] {
                     let (a, b) = quad_to_triangles(quads[2]);
                     chunk[n * 12 + 6 + 4] = a;
                     chunk[n * 12 + 6 + 5] = b;
+                    // Bottom.
+                    let (a, b) = quad_to_triangles(quads[3]);
+                    chunk[n * 12 + 6 + 6] = a;
+                    chunk[n * 12 + 6 + 7] = b;
+                    // Left.
+                    let (a, b) = quad_to_triangles(quads[4]);
+                    chunk[n * 12 + 6 + 8] = a;
+                    chunk[n * 12 + 6 + 9] = b;
                 }
             }
             7 => {
@@ -670,6 +734,8 @@ impl<T: IntoCube> Produce<Triangle> for [T] {
                         cube_near(cube),
                         cube_top(cube),
                         cube_bottom(cube),
+                        cube_left(cube),
+                        cube_right(cube),
                     ];
                     // Far.
                     let (a, b) = quad_to_triangles(quads[0]);
@@ -684,8 +750,16 @@ impl<T: IntoCube> Produce<Triangle> for [T] {
                     chunk[n * 12 + 5 + 4] = a;
                     chunk[n * 12 + 5 + 5] = b;
                     // Bottom.
-                    let (a, _) = quad_to_triangles(quads[3]);
+                    let (a, b) = quad_to_triangles(quads[3]);
                     chunk[n * 12 + 5 + 6] = a;
+                    chunk[n * 12 + 5 + 7] = b;
+                    // Left.
+                    let (a, b) = quad_to_triangles(quads[4]);
+                    chunk[n * 12 + 5 + 8] = a;
+                    chunk[n * 12 + 5 + 9] = b;
+                    // Right.
+                    let (a, _) = quad_to_triangles(quads[5]);
+                    chunk[n * 12 + 5 + 10] = a;
                 }
             }
             8 => {
@@ -705,8 +779,8 @@ impl<T: IntoCube> Produce<Triangle> for [T] {
                 chunk[2] = a;
                 chunk[3] = b;
 
-                // There are 4 whole cubes, taking up 48 triangles.
-                let n = (list.len() - 1).min(4);
+                // There are 5 whole cubes, taking up 60 triangles.
+                let n = (list.len() - 1).min(5);
                 for i in 0..n {
                     let cube = &list[i + 1].into_cube();
                     let quads = [
@@ -722,32 +796,6 @@ impl<T: IntoCube> Produce<Triangle> for [T] {
                         chunk[i * 12 + 4 + j * 2] = a;
                         chunk[i * 12 + 4 + j * 2 + 1] = b;
                     }
-                }
-
-                if list.len() > n + 1 {
-                    let cube = &list[n + 1].into_cube();
-                    let quads = [
-                        cube_far(cube),
-                        cube_near(cube),
-                        cube_top(cube),
-                        cube_bottom(cube),
-                    ];
-                    // Far.
-                    let (a, b) = quad_to_triangles(quads[0]);
-                    chunk[n * 12 + 4] = a;
-                    chunk[n * 12 + 4 + 1] = b;
-                    // Near.
-                    let (a, b) = quad_to_triangles(quads[1]);
-                    chunk[n * 12 + 4 + 2] = a;
-                    chunk[n * 12 + 4 + 3] = b;
-                    // Top.
-                    let (a, b) = quad_to_triangles(quads[2]);
-                    chunk[n * 12 + 4 + 4] = a;
-                    chunk[n * 12 + 4 + 5] = b;
-                    // Bottom.
-                    let (a, b) = quad_to_triangles(quads[3]);
-                    chunk[n * 12 + 4 + 6] = a;
-                    chunk[n * 12 + 4 + 7] = b;
                 }
             }
             9 => {
@@ -766,8 +814,8 @@ impl<T: IntoCube> Produce<Triangle> for [T] {
                 chunk[1] = a;
                 chunk[2] = b;
 
-                // There are 4 whole cubes, taking up 48 triangles.
-                let n = (list.len() - 1).min(4);
+                // There are 5 whole cubes, taking up 60 triangles.
+                let n = (list.len() - 1).min(5);
                 for i in 0..n {
                     let cube = &list[i + 1].into_cube();
                     let quads = [
@@ -787,32 +835,10 @@ impl<T: IntoCube> Produce<Triangle> for [T] {
 
                 if list.len() > n + 1 {
                     let cube = &list[n + 1].into_cube();
-                    let quads = [
-                        cube_far(cube),
-                        cube_near(cube),
-                        cube_top(cube),
-                        cube_bottom(cube),
-                        cube_left(cube),
-                    ];
+                    let quad = cube_far(cube);
                     // Far.
-                    let (a, b) = quad_to_triangles(quads[0]);
+                    let (a, _) = quad_to_triangles(quad);
                     chunk[n * 12 + 3] = a;
-                    chunk[n * 12 + 3 + 1] = b;
-                    // Near.
-                    let (a, b) = quad_to_triangles(quads[1]);
-                    chunk[n * 12 + 3 + 2] = a;
-                    chunk[n * 12 + 3 + 3] = b;
-                    // Top.
-                    let (a, b) = quad_to_triangles(quads[2]);
-                    chunk[n * 12 + 3 + 4] = a;
-                    chunk[n * 12 + 3 + 5] = b;
-                    // Bottom.
-                    let (a, b) = quad_to_triangles(quads[3]);
-                    chunk[n * 12 + 3 + 6] = a;
-                    chunk[n * 12 + 3 + 7] = b;
-                    // Left.
-                    let (a, _) = quad_to_triangles(quads[4]);
-                    chunk[n * 12 + 3 + 8] = a;
                 }
             }
             10 => {
@@ -825,8 +851,8 @@ impl<T: IntoCube> Produce<Triangle> for [T] {
                 chunk[0] = a;
                 chunk[1] = b;
 
-                // There are 4 whole cubes, taking up 48 triangles.
-                let n = (list.len() - 1).min(4);
+                // There are 5 whole cubes, taking up 60 triangles.
+                let n = (list.len() - 1).min(5);
                 for i in 0..n {
                     let cube = &list[i + 1].into_cube();
                     let quads = [
@@ -846,33 +872,11 @@ impl<T: IntoCube> Produce<Triangle> for [T] {
 
                 if list.len() > n + 1 {
                     let cube = &list[n + 1].into_cube();
-                    let quads = [
-                        cube_far(cube),
-                        cube_near(cube),
-                        cube_top(cube),
-                        cube_bottom(cube),
-                        cube_left(cube),
-                    ];
+                    let quad = cube_far(cube);
                     // Far.
-                    let (a, b) = quad_to_triangles(quads[0]);
+                    let (a, b) = quad_to_triangles(quad);
                     chunk[n * 12 + 2] = a;
                     chunk[n * 12 + 2 + 1] = b;
-                    // Near.
-                    let (a, b) = quad_to_triangles(quads[1]);
-                    chunk[n * 12 + 2 + 2] = a;
-                    chunk[n * 12 + 2 + 3] = b;
-                    // Top.
-                    let (a, b) = quad_to_triangles(quads[2]);
-                    chunk[n * 12 + 2 + 4] = a;
-                    chunk[n * 12 + 2 + 5] = b;
-                    // Bottom.
-                    let (a, b) = quad_to_triangles(quads[3]);
-                    chunk[n * 12 + 2 + 6] = a;
-                    chunk[n * 12 + 2 + 7] = b;
-                    // Left.
-                    let (a, b) = quad_to_triangles(quads[4]);
-                    chunk[n * 12 + 2 + 8] = a;
-                    chunk[n * 12 + 2 + 9] = b;
                 }
             }
             _ => {
@@ -884,8 +888,8 @@ impl<T: IntoCube> Produce<Triangle> for [T] {
                 let (_, b) = quad_to_triangles(quad);
                 chunk[0] = b;
 
-                // There are 4 whole cubes, taking up 48 triangles.
-                let n = (list.len() - 1).min(4);
+                // There are 5 whole cubes, taking up 60 triangles.
+                let n = (list.len() - 1).min(5);
                 for i in 0..n {
                     let cube = &list[i + 1].into_cube();
                     let quads = [
@@ -908,34 +912,14 @@ impl<T: IntoCube> Produce<Triangle> for [T] {
                     let quads = [
                         cube_far(cube),
                         cube_near(cube),
-                        cube_top(cube),
-                        cube_bottom(cube),
-                        cube_left(cube),
-                        cube_right(cube),
                     ];
                     // Far.
                     let (a, b) = quad_to_triangles(quads[0]);
                     chunk[n * 12 + 1] = a;
                     chunk[n * 12 + 1 + 1] = b;
                     // Near.
-                    let (a, b) = quad_to_triangles(quads[1]);
+                    let (a, _) = quad_to_triangles(quads[1]);
                     chunk[n * 12 + 1 + 2] = a;
-                    chunk[n * 12 + 1 + 3] = b;
-                    // Top.
-                    let (a, b) = quad_to_triangles(quads[2]);
-                    chunk[n * 12 + 1 + 4] = a;
-                    chunk[n * 12 + 1 + 5] = b;
-                    // Bottom.
-                    let (a, b) = quad_to_triangles(quads[3]);
-                    chunk[n * 12 + 1 + 6] = a;
-                    chunk[n * 12 + 1 + 7] = b;
-                    // Left.
-                    let (a, b) = quad_to_triangles(quads[4]);
-                    chunk[n * 12 + 1 + 8] = a;
-                    chunk[n * 12 + 1 + 9] = b;
-                    // Right.
-                    let (a, _) = quad_to_triangles(quads[5]);
-                    chunk[n * 12 + 1 + 10] = a;
                 }
             }
         }

@@ -215,9 +215,10 @@ pub fn render_tile_depth_all<T: Produce<Triangle> + ?Sized>(
     }
 
     // Terminate rays when not hitting anything new.
+    let len = list.virtual_length();
     for hit in tile {
         if let Some((_, index_flag)) = hit {
-            if !index_flag.flag() {*hit = None};
+            if !index_flag.flag() || index_flag.index() >= len {*hit = None};
         }
     }
 
