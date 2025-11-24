@@ -19,7 +19,7 @@ pub fn volumetric_fog_alpha(alpha: f32, fx: f32, dist: f32) -> f32 {
 }
 
 /// Represents the fog state for accumulators using volumetric fog effects.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum FogState {
     /// No previous fog effect in progress.
     None,
@@ -71,12 +71,13 @@ impl FogState {
     pub fn acc_alpha_blend_srgb_over(&mut self, d: f32, c: Rgba, acc_color: &mut Rgba) {
         use crate::color::rgba_alpha_blending_srgb_over;
 
+        // Update state before deciding what to do next.
+        *self = self.update(d, c);
         match self {
             FogState::None => {
                 *acc_color = rgba_alpha_blending_srgb_over(*acc_color, c);
             }
-            FogState::Start{..} |
-            FogState::End{..} => {}
+            FogState::Start {..} | FogState::End {..} => {}
             FogState::Commit {color: fog_color, distance} => {
                 let fx = volumetric_fog_fx(fog_color[3], *distance);
                 let [r, g, b, a] = *fog_color;
@@ -97,8 +98,8 @@ impl FogState {
         use crate::color::rgba_alpha_blending_srgb_over;
 
         match self {
-            FogState::None |
-            FogState::Start {..} |
+            FogState::None => {}
+            FogState::Start {..} => {}
             FogState::Commit {..} => {}
             FogState::End {color: fog_color, distance} => {
                 let fx = volumetric_fog_fx(fog_color[3], *distance);
@@ -113,12 +114,13 @@ impl FogState {
     pub fn acc_alpha_blend_linear_over(&mut self, d: f32, c: Rgba, acc_color: &mut Rgba) {
         use crate::color::rgba_alpha_blending_linear_over;
 
+        *self = self.update(d, c);
         match self {
             FogState::None => {
                 *acc_color = rgba_alpha_blending_linear_over(*acc_color, c);
             }
-            FogState::Start{..} |
-            FogState::End{..} => {}
+            FogState::Start {..} |
+            FogState::End {..} => {}
             FogState::Commit {color: fog_color, distance} => {
                 let fx = volumetric_fog_fx(fog_color[3], *distance);
                 let [r, g, b, a] = *fog_color;
@@ -140,11 +142,11 @@ impl FogState {
 
         match self {
             FogState::None |
-            FogState::Start {..} |
-            FogState::Commit {..} => {}
-            FogState::End {color: fog_color, distance} => {
-                let fx = volumetric_fog_fx(fog_color[3], *distance);
-                let [r, g, b, a] = *fog_color;
+            FogState::Start {..} => {}
+            FogState::Commit {color, distance} |
+            FogState::End {color, distance} => {
+                let fx = volumetric_fog_fx(color[3], *distance);
+                let [r, g, b, a] = *color;
                 let c = [r, g, b, volumetric_fog_alpha(a, fx, *distance)];
                 *acc_color = rgba_alpha_blending_linear_over(*acc_color, c);
             }
