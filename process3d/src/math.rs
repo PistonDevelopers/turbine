@@ -117,3 +117,6 @@ pub fn lerp_rgba(a: Rgba, b: Rgba, t: f32) -> Rgba {
 pub fn lerp(a: f32, b: f32, t: f32) -> f32 {
     a + (b - a) * t
 }
+
+/// Clamp to unit interval.
+pub fn clamp(a: f32) -> f32 {if a >= 1.0 {1.0} else if a <= 0.0 {0.0} else {a}}
