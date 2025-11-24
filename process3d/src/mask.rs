@@ -41,6 +41,14 @@ impl CompressedMasks {
         self.len_words = 0;
     }
 
+    /// Push a number of ones.
+    pub fn push_ones(&mut self, ones: u64) {
+        let n = ones / 64;
+        let k = ones % 64;
+        for _ in 0..n {self.push(0xffffffffffffffff)}
+        self.push((1_u64 << k) - 1)
+    }
+
     /// Push a new 64‐bit mask on the end, merging into the last run if possible.
     pub fn push(&mut self, word: u64) {
         use Segment::*;

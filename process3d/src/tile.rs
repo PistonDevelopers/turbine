@@ -90,6 +90,22 @@ pub fn pre_masks(
     vec![CompressedMasks::new(); n as usize]
 }
 
+/// Fake masks that includes all triangles.
+///
+/// This is used for testing.
+pub fn fake_all_masks<T: Produce<Triangle> + ?Sized + Sync>(
+    _persp: &CameraPerspective,
+    _dim: PixelPos,
+    _n_tile_size: u32,
+    list: &T,
+    masks: &mut [CompressedMasks]
+) {
+    for masks in masks {
+        masks.clear();
+        masks.push_ones(list.virtual_length() as u64);
+    }
+}
+
 /// Collect all masks per tile.
 pub fn masks<T: Produce<Triangle> + ?Sized + Sync>(
     persp: &CameraPerspective,
@@ -172,6 +188,8 @@ pub fn render_tile_depth_all<T: Produce<Triangle> + ?Sized>(
     masks: &CompressedMasks,
     tile: &mut [RayHitAll],
 ) -> bool {
+    use crate::IndexFlag;
+
     let eye = [0.0; 3];
     let iter = chunk_iter(list, masks);
     let mut alive = false;
@@ -182,6 +200,13 @@ pub fn render_tile_depth_all<T: Produce<Triangle> + ?Sized>(
                 let hit = &mut tile[(j * n_tile_size + i) as usize];
                 let dir: Point = ray_dir(persp, eye, [pos[0] + i, pos[1] + j], dim);
                 ray_triangle_chunk_hit_all_update((eye, dir), &chunk, mask, off, hit);
+                if let Some((d, index_flag)) = hit {
+                    if !index_flag.flag() {
+                        let ind = index_flag.index();
+                        let new_ind = ind.max(off + 64);
+                        *hit = Some((*d, IndexFlag::from_parts(new_ind, false)));
+                    }
+                }
                 alive |= hit.is_some();
             }
         }
