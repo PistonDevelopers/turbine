@@ -140,12 +140,20 @@ impl IntoCube for Aabb {
     fn into_cube(self) -> Cube {crate::cube::aabb_to_cube(self)}
 }
 
+const EPS_VOXEL: f32 = 16.0 * std::f32::EPSILON;
+
 impl IntoCube for Point {
     #[inline(always)]
-    fn into_cube(self) -> Cube {crate::cube::aabb_to_cube((
-        self,
-        vecmath::vec3_add(self, [1.0; 3])
-    ))}
+    fn into_cube(self) -> Cube {
+        use vecmath::vec3_add as add;
+        // Remove semi-transparent artifacts by shrink the Aabb a little bit.
+        // To overload this default behavior, you can use Aabbs directly.
+        let eps = EPS_VOXEL;
+        crate::cube::aabb_to_cube((
+            add(self, [eps; 3]),
+            add(self, [1.0 - eps; 3])
+        ))
+    }
 }
 
 macro_rules! into_cube_impl {
@@ -155,9 +163,13 @@ macro_rules! into_cube_impl {
                 #[inline(always)]
                 fn into_cube(self) -> Cube {
                     let pt = [self[0] as f32, self[1] as f32, self[2] as f32];
+                    use vecmath::vec3_add as add;
+                    // Remove semi-transparent artifacts by shrink the Aabb a little bit.
+                    // To overload this default behavior, you can use Aabbs directly.
+                    let eps = EPS_VOXEL;
                     crate::cube::aabb_to_cube((
-                        pt,
-                        vecmath::vec3_add(pt, [1.0; 3])
+                        add(pt, [eps; 3]),
+                        add(pt, [1.0 - eps; 3])
                     ))
                 }
             }
