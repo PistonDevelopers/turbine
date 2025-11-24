@@ -82,11 +82,12 @@ pub fn rgba_to_f32(a: Rgba<u8>) -> Rgba {
 
 /// Converts color to `u8` precision.
 pub fn rgba_to_u8(a: Rgba) -> Rgba<u8> {
+    use crate::math::clamp;
     [
-        (a[0] * 255.0) as u8,
-        (a[1] * 255.0) as u8,
-        (a[2] * 255.0) as u8,
-        (a[3] * 255.0) as u8,
+        (clamp(a[0]) * 255.0) as u8,
+        (clamp(a[1]) * 255.0) as u8,
+        (clamp(a[2]) * 255.0) as u8,
+        (clamp(a[3]) * 255.0) as u8,
     ]
 }
 
