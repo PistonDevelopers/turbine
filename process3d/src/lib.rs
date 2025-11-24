@@ -659,4 +659,44 @@ mod tests {
         assert_eq!(f(2, 0), 0xfffffffffffffffc);
         assert_eq!(f(3, 0), 0xfffffffffffffff8);
     }
+
+    #[test]
+    fn test_fog_state() {
+        use crate::fog::FogState;
+
+        let red = [1.0, 0.0, 0.0, 1.0];
+        let semi_red = [1.0, 0.0, 0.0, 0.5];
+        let semi_blue = [0.0, 0.0, 1.0, 0.5];
+
+        let fog = FogState::None;
+        assert_eq!(fog.update(0.0, red), FogState::None);
+
+        let fog = FogState::None;
+        assert_eq!(fog.update(0.0, semi_red), FogState::Start {
+            color: semi_red, depth: 0.0, distance: 0.0});
+
+        let fog = FogState::None;
+        assert_eq!(fog.update(1.0, semi_red), FogState::Start {
+            color: semi_red, depth: 1.0, distance: 0.0});
+
+        let fog = FogState::Commit {color: semi_blue, distance: 2.0};
+        assert_eq!(fog.update(1.0, semi_red), FogState::Start {
+            color: semi_red, depth: 1.0, distance: 0.0});
+
+        let fog = FogState::End {color: semi_red, distance: 2.0};
+        assert_eq!(fog.update(1.0, semi_red), FogState::Start {
+            color: semi_red, depth: 1.0, distance: 2.0});
+
+        let fog = FogState::End {color: semi_red, distance: 2.0};
+        assert_eq!(fog.update(1.0, semi_blue,), FogState::Commit {
+            color: semi_red, distance: 2.0});
+
+        let fog = FogState::End {color: semi_red, distance: 2.0};
+        assert_eq!(fog.update(1.0, semi_red), FogState::Start {
+            color: semi_red, depth: 1.0, distance: 2.0});
+
+        let fog = FogState::Start {color: semi_blue, depth: 0.0, distance: 0.0};
+        assert_eq!(fog.update(5.0, red), FogState::Commit {
+            color: semi_blue, distance: 5.0});
+    }
 }
