@@ -180,7 +180,7 @@ mod tests {
         let (top_a, top_b) = quad_to_triangles(cube_top(&cube));
         assert!(triangle_point_front(top_a, [0.5, 2.0, 0.5]));
         assert!(triangle_point_front(top_b, [0.5, 2.0, 0.5]));
-        let (bot_a, bot_b) = quad_to_triangles(cube_top(&cube));
+        let (bot_a, bot_b) = quad_to_triangles(cube_bottom(&cube));
         assert!(triangle_point_front(bot_a, [0.5, -1.0, 0.5]));
         assert!(triangle_point_front(bot_b, [0.5, -1.0, 0.5]));
         let (left_a, left_b) = quad_to_triangles(cube_left(&cube));
@@ -201,8 +201,8 @@ mod tests {
         let near_b = ([1.0, 1.0, 0.0], [0.0, 0.0, 0.0], [0.0, 1.0, 0.0]);
         let top_a = ([1.0, 1.0, 0.0], [0.0, 1.0, 0.0], [1.0, 1.0, 1.0]);
         let top_b = ([1.0, 1.0, 1.0], [0.0, 1.0, 0.0], [0.0, 1.0, 1.0]);
-        let bot_a = ([1.0, 0.0, 0.0], [0.0, 0.0, 0.0], [1.0, 0.0, 1.0]);
-        let bot_b = ([1.0, 0.0, 1.0], [0.0, 0.0, 0.0], [0.0, 0.0, 1.0]);
+        let bot_a = ([0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 1.0]);
+        let bot_b = ([0.0, 0.0, 1.0], [1.0, 0.0, 0.0], [0.0, 1.0, 1.0]);
         let left_a = ([0.0, 0.0, 0.0], [0.0, 0.0, 1.0], [0.0, 1.0, 0.0]);
         let left_b = ([0.0, 1.0, 0.0], [0.0, 0.0, 1.0], [0.0, 1.0, 1.0]);
         let right_a = ([1.0, 0.0, 1.0], [1.0, 0.0, 0.0], [1.0, 1.0, 1.0]);

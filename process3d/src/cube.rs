@@ -39,7 +39,7 @@ pub fn cube_right(cube: &Cube) -> Quad {
 
 /// Cube bottom quad.
 pub fn cube_bottom(cube: &Cube) -> Quad {
-    [cube[1], cube[0], cube[5], cube[4]]
+    [cube[0], cube[1], cube[4], cube[6]]
 }
 
 /// Cube top quad.
