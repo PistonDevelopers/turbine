@@ -36,6 +36,35 @@ pub trait Acc {
     fn acc(&self, i: u32, j: u32) -> Self::Out;
 }
 
+/// Accumulator for tile rendering, using Rgba colors
+/// and minimum distance selection.
+pub struct TileRgbaMinDepthAcc<const TILE_SIZE: usize> {
+    /// Stores buffer data for the accumulator.
+    pub buf: [[(f32, Rgba); TILE_SIZE]; TILE_SIZE],
+}
+
+impl<const TILE_SIZE: usize> Acc for TileRgbaMinDepthAcc<TILE_SIZE> {
+    type Data = ();
+    type In = Rgba;
+    type Out = Rgba;
+    fn new(_: ()) -> Self {
+        Self {
+            buf: [[(0.0, [0.0; 4]); TILE_SIZE]; TILE_SIZE],
+        }
+    }
+    fn clear(&mut self) {
+        self.buf = [[(0.0, [0.0; 4]); TILE_SIZE]; TILE_SIZE];
+    }
+    fn upd(&mut self, i: u32, j: u32, depth: f32, color: Rgba) {
+        let (d, c) = &mut self.buf[j as usize][i as usize];
+        if *d == 0.0 || *d > depth {
+            *d = depth;
+            *c = color;
+        }
+    }
+    fn acc(&self, i: u32, j: u32) -> Rgba {self.buf[j as usize][i as usize].1}
+}
+
 /// Accumulator for tile rendering, using Rgba colors in sRGB color space
 /// and semi-fog effect for alpha over blending.
 ///
