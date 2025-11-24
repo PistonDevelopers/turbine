@@ -78,7 +78,6 @@ impl<const TILE_SIZE: usize, const ACC: usize> Acc for TileRgbaSrgbSemiFogAcc<TI
         let mut fog = FogState::None;
         for k in 0..len {
             let (d, c) = buf[k as usize];
-            fog = fog.update(d, c);
             fog.acc_alpha_blend_srgb_over(d, c, &mut color);
         }
         fog.acc_end_alpha_blend_srgb_over(&mut color);
@@ -152,7 +151,6 @@ impl<const TILE_SIZE: usize, const ACC: usize> Acc for TileRgbaLinearSemiFogAcc<
         let mut fog = FogState::None;
         for k in 0..len {
             let (d, c) = buf[k as usize];
-            fog = fog.update(d, c);
             fog.acc_alpha_blend_linear_over(d, c, &mut color);
         }
         fog.acc_end_alpha_blend_linear_over(&mut color);
