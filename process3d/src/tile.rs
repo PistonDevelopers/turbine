@@ -36,6 +36,30 @@ pub fn tile_mask<T: Produce<Triangle> + ?Sized>(
     }
 }
 
+/// From camera perspective, tile and a list of triangles, get mask of intersecting triangles.
+///
+/// This is used as a preparation stage before sampling each tile in parallel.
+///
+/// The algorithm does not clear the masks before pushing new ones.
+pub fn tile_mask_with_pre_mask<T: Produce<Triangle> + ?Sized>(
+    persp: &CameraPerspective,
+    dim: Uv,
+    tile_pos: Uv,
+    tile_size: Uv,
+    list: &T,
+    masks: &mut CompressedMasks,
+    pre_masks: &CompressedMasks,
+) {
+    let fr = frustum_planes_tile(persp, dim, tile_pos, tile_size);
+    let iter = chunk_iter(list, pre_masks);
+    let mut last_off = 0;
+    for (off, (chunk, mask)) in iter {
+        for _ in (last_off..off).step_by(64) {masks.push(0)};
+        masks.push(frustum_planes_triangle_chunk_mask(&fr, &chunk, mask));
+        last_off = off + 64;
+    }
+}
+
 /// Calculate the normalized tile position.
 ///
 /// Dimension is the size of image in pixels.
@@ -104,6 +128,38 @@ pub fn fake_all_masks<T: Produce<Triangle> + ?Sized + Sync>(
         masks.clear();
         masks.push_ones(list.virtual_length() as u64);
     }
+}
+
+/// Collect all masks per tile, using pre-masks at lower resolution.
+///
+/// This speeds up compression, because one can iterate faster over
+/// the virtual triangles using the pre-masks.
+///
+/// `scale_to_pre_tile_size` specifies the ratio of pre-tile-size divided by tile-size.
+pub fn masks_with_pre_masks<T: Produce<Triangle> + ?Sized + Sync>(
+    persp: &CameraPerspective,
+    dim: PixelPos,
+    n_tile_size: u32,
+    scale_to_pre_tile_size: u32,
+    list: &T,
+    masks: &mut [CompressedMasks],
+    pre_masks: &mut [CompressedMasks],
+) {
+    use rayon::prelude::*;
+
+    let s = scale_to_pre_tile_size;
+    let w = tile_grid(dim, n_tile_size)[0];
+    let w2 = tile_grid(dim, n_tile_size * s)[0];
+    let ndim = near_dim(&persp);
+    masks.par_iter_mut().enumerate().for_each(|(k,  masks)| {
+        masks.clear();
+        let i = k as u32 % w;
+        let j = k as u32 / w;
+        let pre_masks = &pre_masks[((j / s) * w2 + i / s) as usize];
+        let tpos = tile_pos(dim, [i, j], n_tile_size);
+        let tsize = tile_size(dim, [i, j], n_tile_size);
+        tile_mask_with_pre_mask(persp, ndim, tpos, tsize, list, masks, pre_masks);
+    });
 }
 
 /// Collect all masks per tile.
