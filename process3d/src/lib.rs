@@ -149,6 +149,13 @@ mod tests {
     }
 
     #[test]
+    fn test_tile_size() {
+        use crate::tile::tile_size;
+
+        assert_eq!(tile_size([10, 10], [0, 0], 1), [0.2, 0.2]);
+    }
+
+    #[test]
     fn test_ray_triangle_chunk_hit_all_update() {
         use crate::ray::ray_triangle_chunk_hit_all_update;
 
@@ -698,5 +705,26 @@ mod tests {
         let fog = FogState::Start {color: semi_blue, depth: 0.0, distance: 0.0};
         assert_eq!(fog.update(5.0, red), FogState::Commit {
             color: semi_blue, distance: 5.0});
+    }
+
+    #[test]
+    fn test_sub_tile() {
+        use crate::tile::*;
+
+        assert_eq!(optimal_sub_tile_size(32), 36);
+        assert_eq!(optimal_sub_tile_size(15), 24);
+        assert_eq!(optimal_sub_tile_size(8), 12);
+        assert_eq!(optimal_sub_tile_size(39), 48);
+        assert_eq!(optimal_sub_tile_size(50), 60);
+        assert_eq!(optimal_sub_tile_size(70), 120);
+        assert_eq!(optimal_sub_tile_size(25), 36);
+
+        assert_eq!(sub_tile(48, 100, 100), 24);
+        assert_eq!(sub_tile(48, 500, 100), 16);
+        assert_eq!(sub_tile(48, 1000, 100), 12);
+        assert_eq!(sub_tile(48, 5000, 100), 6);
+        assert_eq!(sub_tile(48, 10000, 100), 4);
+        assert_eq!(sub_tile(48, 100000, 100), 2);
+        assert_eq!(sub_tile(48, 10000000, 100), 2);
     }
 }
