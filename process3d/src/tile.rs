@@ -464,15 +464,15 @@ pub fn masks<T: Produce<Triangle> + ?Sized + Sync>(
 /// Ray direction is recreated for each triangle chunk.
 ///
 /// Requires compressed masks per tile to be prepared in advance.
-pub fn render_tile_depth<T: Produce<Triangle> + ?Sized>(
+pub fn render_tile_depth<T: Produce<Triangle> + ?Sized, const TILE_SIZE: usize>(
     persp: &CameraPerspective,
     dim: PixelPos,
     pos: PixelPos,
-    n_tile_size: u32,
     list: &T,
     masks: &CompressedMasks,
-    tile: &mut [RayHit],
+    tile: &mut [[RayHit; TILE_SIZE]; TILE_SIZE],
 ) {
+    let n_tile_size = TILE_SIZE as u32;
     let eye = [0.0; 3];
     let iter = chunk_iter(list, masks);
     for (off, (chunk, mask)) in iter {
@@ -480,7 +480,7 @@ pub fn render_tile_depth<T: Produce<Triangle> + ?Sized>(
             for i in 0..n_tile_size {
                 let dir: Point = ray_dir(persp, eye, [pos[0] + i, pos[1] + j], dim);
                 ray_triangle_chunk_hit_update((eye, dir), &chunk, mask, off,
-                    &mut tile[(j * n_tile_size + i) as usize]);
+                    &mut tile[j as usize][i as usize]);
             }
         }
     }
@@ -534,18 +534,18 @@ pub fn row_sub_tile_iter(
 ///
 /// Returns `true` if there is something to render.
 /// You can use a loop and break when this is `false`.
-pub fn render_row_sub_tile_depth_all<T: Produce<Triangle> + ?Sized>(
+pub fn render_row_sub_tile_depth_all<T: Produce<Triangle> + ?Sized, const TILE_SIZE: usize>(
     persp: &CameraPerspective,
     dim: PixelPos,
     pos: PixelPos,
-    n_tile_size: u32,
     sub_tile_size: u32,
     list: &T,
     sub_masks: &[CompressedMasks],
-    tile: &mut [RayHitAll],
+    tile: &mut [[RayHitAll; TILE_SIZE]; TILE_SIZE],
 ) -> bool {
     use crate::IndexFlag;
 
+    let n_tile_size = TILE_SIZE as u32;
     let n = n_tile_size / sub_tile_size;
     let eye = [0.0; 3];
     let mut alive = false;
@@ -564,7 +564,7 @@ pub fn render_row_sub_tile_depth_all<T: Produce<Triangle> + ?Sized>(
                         let i = sub_tile_pos[0] + i;
                         let j = sub_tile_pos[1] + j;
 
-                        let hit = &mut tile[(j * n_tile_size + i) as usize];
+                        let hit = &mut tile[j as usize][i as usize];
                         let dir: Point = ray_dir(persp, eye, [pos[0] + i, pos[1] + j], dim);
                         ray_triangle_chunk_hit_all_update((eye, dir), &chunk, mask, off, hit);
                         if let Some((d, index_flag)) = hit {
@@ -583,9 +583,12 @@ pub fn render_row_sub_tile_depth_all<T: Produce<Triangle> + ?Sized>(
 
     // Terminate rays when not hitting anything new.
     let len = list.virtual_length();
-    for hit in tile {
-        if let Some((_, index_flag)) = hit {
-            if !index_flag.flag() || index_flag.index() >= len {*hit = None};
+    for j in 0..TILE_SIZE {
+        for i in 0..TILE_SIZE {
+            let hit = &mut tile[j][i];
+            if let Some((_, index_flag)) = hit {
+                if !index_flag.flag() || index_flag.index() >= len {*hit = None};
+            }
         }
     }
 
@@ -613,17 +616,17 @@ pub fn render_row_sub_tile_depth_all<T: Produce<Triangle> + ?Sized>(
 ///
 /// Returns `true` if there is something to render.
 /// You can use a loop and break when this is `false`.
-pub fn render_tile_depth_all<T: Produce<Triangle> + ?Sized>(
+pub fn render_tile_depth_all<T: Produce<Triangle> + ?Sized, const TILE_SIZE: usize>(
     persp: &CameraPerspective,
     dim: PixelPos,
     pos: PixelPos,
-    n_tile_size: u32,
     list: &T,
     masks: &CompressedMasks,
-    tile: &mut [RayHitAll],
+    tile: &mut [[RayHitAll; TILE_SIZE]; TILE_SIZE],
 ) -> bool {
     use crate::IndexFlag;
 
+    let n_tile_size = TILE_SIZE as u32;
     let eye = [0.0; 3];
     let iter = chunk_iter(list, masks);
     let mut alive = false;
@@ -631,7 +634,7 @@ pub fn render_tile_depth_all<T: Produce<Triangle> + ?Sized>(
         let mut inner_alive = false;
         for j in 0..n_tile_size {
             for i in 0..n_tile_size {
-                let hit = &mut tile[(j * n_tile_size + i) as usize];
+                let hit = &mut tile[j as usize][i as usize];
                 let dir: Point = ray_dir(persp, eye, [pos[0] + i, pos[1] + j], dim);
                 ray_triangle_chunk_hit_all_update((eye, dir), &chunk, mask, off, hit);
                 if let Some((d, index_flag)) = hit {
@@ -651,9 +654,12 @@ pub fn render_tile_depth_all<T: Produce<Triangle> + ?Sized>(
 
     // Terminate rays when not hitting anything new.
     let len = list.virtual_length();
-    for hit in tile {
-        if let Some((_, index_flag)) = hit {
-            if !index_flag.flag() || index_flag.index() >= len {*hit = None};
+    for j in 0..TILE_SIZE {
+        for i in 0..TILE_SIZE {
+            let hit = &mut tile[j][i];
+            if let Some((_, index_flag)) = hit {
+                if !index_flag.flag() || index_flag.index() >= len {*hit = None};
+            }
         }
     }
 
