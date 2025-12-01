@@ -132,7 +132,10 @@ Renderer<'_, Scene, Prod, Img, Accumulator, ShaderArgs, P>
           Prod: Produce<Triangle> + Sync + ?Sized,
           Accumulator: Acc,
 {
-    /// Render with some tile size.
+    /// Render with some render tile size.
+    ///
+    /// The tile size should be optimized for adaptive sub-tile rendering.
+    /// Use `optimal_sub_tile_size`.
     pub fn render<const TILE_SIZE: usize>(self) {
         let Renderer {
             scene, scene_ray_color, producer,
