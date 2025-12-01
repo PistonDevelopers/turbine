@@ -13,8 +13,10 @@ pub mod frustrum;
 pub mod mask;
 pub mod math;
 pub mod produce;
+pub mod profile;
 pub mod quad;
 pub mod ray;
+pub mod render;
 pub mod tile;
 pub mod triangle;
 
@@ -31,8 +33,10 @@ pub mod prelude {
         frustrum::*,
         math::*,
         produce::*,
+        profile::*,
         quad::*,
         ray::*,
+        render::*,
         tile::*,
         triangle::*,
     };
