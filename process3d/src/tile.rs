@@ -628,7 +628,7 @@ pub fn render_tile_depth_all<T: Produce<Triangle> + ?Sized>(
     let iter = chunk_iter(list, masks);
     let mut alive = false;
     for (off, (chunk, mask)) in iter {
-        alive = false;
+        let mut inner_alive = false;
         for j in 0..n_tile_size {
             for i in 0..n_tile_size {
                 let hit = &mut tile[(j * n_tile_size + i) as usize];
@@ -641,11 +641,12 @@ pub fn render_tile_depth_all<T: Produce<Triangle> + ?Sized>(
                         *hit = Some((*d, IndexFlag::from_parts(new_ind, false)));
                     }
                 }
-                alive |= hit.is_some();
+                inner_alive |= hit.is_some();
             }
         }
+        alive |= inner_alive;
         // Skip iteration if there no rays alive or nothing to render.
-        if !alive {return false}
+        if !inner_alive {return alive}
     }
 
     // Terminate rays when not hitting anything new.
