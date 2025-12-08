@@ -1,6 +1,7 @@
 extern crate piston;
 extern crate sdl2_window;
 extern crate turbine_scene3d;
+extern crate turbine_scene3d_opengl;
 extern crate vecmath;
 extern crate camera_controllers;
 
@@ -9,6 +10,7 @@ use piston::event_loop::*;
 use piston::input::{RenderEvent, UpdateEvent};
 use turbine_scene3d::*;
 use turbine_scene3d::Command::*;
+use turbine_scene3d_opengl::*;
 use vecmath::*;
 use camera_controllers::*;
 
