@@ -4,7 +4,7 @@
 use std::path::Path;
 use std::io;
 
-use vecmath::*;
+use vecmath::{Matrix4, Vector2, Vector3};
 
 /// Stores a scene command.
 #[derive(Copy, Clone, Debug, PartialEq)]

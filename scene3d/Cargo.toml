@@ -16,14 +16,5 @@ edition = "2024"
 default = []
 
 [dependencies]
-piston = "1.0.0"
 vecmath = "1.0.0"
 wavefront_obj = "11.0.0"
-
-[dev-dependencies]
-pistoncore-sdl2_window = "0.71.0"
-camera_controllers = "0.36.0"
-
-[dev-dependencies.turbine_scene3d-opengl]
-version = "0.1.0"
-path = "backends/opengl"
