@@ -1,12 +1,20 @@
-extern crate gl;
-extern crate opengl_graphics;
 
-use gl_backend::opengl_graphics::shader_utils::{
+use vecmath::{
+    Matrix4,
+    Vector2,
+    Vector3,
+    col_mat4_mul,
+    col_mat4_mul as mul,
+    mat4_id,
+};
+use opengl_graphics::shader_utils::{
     compile_shader,
     uniform_location
 };
 
-use crate::*;
+use turbine_scene3d::*;
+
+use std::path::Path;
 
 /// Stores scene data.
 pub struct Scene {
@@ -400,7 +408,6 @@ impl Scene {
 
     /// Set model-view-projection transform uniform.
     pub fn set_model_view_projection(&self, matrix_id: Matrix4Uniform) {
-        use vecmath::col_mat4_mul as mul;
         unsafe {
             let mvp = mul(mul(self.projection, self.camera), self.model);
             gl::UniformMatrix4fv(self.uniforms[matrix_id.0] as i32, 1, gl::FALSE, &mvp[0][0])

@@ -18,15 +18,6 @@
 
 #![deny(missing_docs)]
 
-extern crate piston;
-extern crate vecmath;
-extern crate wavefront_obj;
-extern crate image;
-
-mod gl_backend;
-
-pub use gl_backend::Scene;
-
 use std::path::Path;
 use std::io;
 
@@ -104,7 +95,8 @@ pub enum Command {
 /// Stores how stuff is rendered in a single frame.
 #[derive(Debug)]
 pub struct FrameGraph {
-    command_lists: Vec<Vec<Command>>,
+    /// Stores command lists.
+    pub command_lists: Vec<Vec<Command>>,
 }
 
 impl FrameGraph {
@@ -125,49 +117,49 @@ impl FrameGraph {
 
 /// References a vertex shader.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub struct VertexShader(usize);
+pub struct VertexShader(pub usize);
 /// References a fragment shader.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub struct FragmentShader(usize);
+pub struct FragmentShader(pub usize);
 /// References a program.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub struct Program(usize);
+pub struct Program(pub usize);
 /// References 4D matrix uniform.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub struct Matrix4Uniform(usize);
+pub struct Matrix4Uniform(pub usize);
 /// References a 2D vector uniform.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub struct Vector2Uniform(usize);
+pub struct Vector2Uniform(pub usize);
 /// References a 3D vector uniform.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub struct Vector3Uniform(usize);
+pub struct Vector3Uniform(pub usize);
 /// References a f32 uniform.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub struct F32Uniform(usize);
+pub struct F32Uniform(pub usize);
 /// References a vertex array object.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub struct VertexArray(usize);
+pub struct VertexArray(pub usize);
 /// References a color buffer object.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub struct ColorBuffer(usize, usize);
+pub struct ColorBuffer(pub usize, pub usize);
 /// References a 3D vertex buffer object.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub struct VertexBuffer3(usize, usize);
+pub struct VertexBuffer3(pub usize, pub usize);
 /// References a 2D vertex buffer object.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub struct VertexBuffer2(usize, usize);
+pub struct VertexBuffer2(pub usize, pub usize);
 /// References an UV buffer object.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub struct UVBuffer(usize, usize);
+pub struct UVBuffer(pub usize, pub usize);
 /// References a normal buffer object.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub struct NormalBuffer(usize, usize);
+pub struct NormalBuffer(pub usize, pub usize);
 /// References a command list object.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub struct CommandList(usize);
+pub struct CommandList(pub usize);
 /// References a texture object.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub struct Texture(usize);
+pub struct Texture(pub usize);
 
 impl ColorBuffer {
     /// Length of color buffer.
@@ -225,9 +217,9 @@ impl ObjMesh {
         let temp_normals = {
             let mut res = vec![];
             for normal in &obj.normals {
-                res.push(normal.x as gl::types::GLfloat);
-                res.push(normal.y as gl::types::GLfloat);
-                res.push(normal.z as gl::types::GLfloat);
+                res.push(normal.x as f32);
+                res.push(normal.y as f32);
+                res.push(normal.z as f32);
             }
             res
         };
@@ -289,8 +281,10 @@ impl ObjMesh {
 /// Stores scene settings.
 #[derive(Clone)]
 pub struct SceneSettings {
-    clear_depth_buffer: bool,
-    clear_enable_depth_test: bool,
+    /// Whether to clear depth buffer.
+    pub clear_depth_buffer: bool,
+    /// Whether to enable depth test.
+    pub clear_enable_depth_test: bool,
 }
 
 impl SceneSettings {

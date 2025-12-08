@@ -9,20 +9,21 @@ keywords = ["turbine", "rendering", "dynamic", "piston"]
 repository = "https://github.com/PistonDevelopers/turbine.git"
 homepage = "https://github.com/PistonDevelopers/turbine"
 documentation = "https://docs.rs/turbine_scene3d"
-exclude = ["assets/*"]
+exclude = ["assets/*", "backends/*"]
+edition = "2024"
 
 [features]
 default = []
 
 [dependencies]
-gl = "0.14.0"
 piston = "1.0.0"
 vecmath = "1.0.0"
-piston2d-opengl_graphics = "0.89.0"
 wavefront_obj = "11.0.0"
-image = "0.25.5"
 
 [dev-dependencies]
 pistoncore-sdl2_window = "0.71.0"
 camera_controllers = "0.36.0"
 
+[dev-dependencies.turbine_scene3d-opengl]
+version = "0.1.0"
+path = "backends/opengl"
