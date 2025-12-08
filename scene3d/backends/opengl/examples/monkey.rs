@@ -23,9 +23,9 @@ fn main() {
         let mut window: Sdl2Window = settings.build().unwrap();
         window.set_capture_cursor(true);
         let mut scene = Scene::new(SceneSettings::new());
-        let vertex_shader = scene.vertex_shader(include_str!("../assets/basic_shading.glslv"))
+        let vertex_shader = scene.vertex_shader(include_str!("../../../assets/basic_shading.glslv"))
             .unwrap();
-        let fragment_shader = scene.fragment_shader(include_str!("../assets/basic_shading.glslf"))
+        let fragment_shader = scene.fragment_shader(include_str!("../../../assets/basic_shading.glslf"))
             .unwrap();
         (window, scene, vertex_shader, fragment_shader)
     };
@@ -39,12 +39,12 @@ fn main() {
     );
 
     let (monkey, light_position_id, ambient_light_id, program) = {
-        let obj_mesh = ObjMesh::load("assets/monkey.obj").unwrap();
+        let obj_mesh = ObjMesh::load("../../assets/monkey.obj").unwrap();
         let vertex_array = scene.vertex_array();
         let vertex_buffer = scene.vertex_buffer3(vertex_array, 0, &obj_mesh.vertices);
         let _ = scene.uv_buffer(vertex_array, 1, &obj_mesh.uvs);
         let _ = scene.normal_buffer(vertex_array, 2, &obj_mesh.normals);
-        let texture = scene.load_texture("assets/monkey.png").unwrap();
+        let texture = scene.load_texture("../../assets/monkey.png").unwrap();
 
         let program = scene.program_from_vertex_fragment(vertex_shader, fragment_shader);
 

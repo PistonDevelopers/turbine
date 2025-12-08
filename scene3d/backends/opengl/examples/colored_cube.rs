@@ -23,9 +23,9 @@ fn main() {
         let mut window: Sdl2Window = settings.build().unwrap();
         window.set_capture_cursor(true);
         let mut scene = Scene::new(SceneSettings::new());
-        let vertex_shader = scene.vertex_shader(include_str!("../assets/colored_cube.glslv"))
+        let vertex_shader = scene.vertex_shader(include_str!("../../../assets/colored_cube.glslv"))
             .unwrap();
-        let fragment_shader = scene.fragment_shader(include_str!("../assets/colored_cube.glslf"))
+        let fragment_shader = scene.fragment_shader(include_str!("../../../assets/colored_cube.glslf"))
             .unwrap();
         (window, scene, vertex_shader, fragment_shader)
     };

@@ -21,3 +21,8 @@ vecmath = "1.0.0"
 image = "0.25.5"
 gl = "0.14.0"
 piston2d-opengl_graphics = "0.89.0"
+
+[dev-dependencies]
+piston = "1.0.0"
+pistoncore-sdl2_window = "0.71.0"
+camera_controllers = "0.36.0"
