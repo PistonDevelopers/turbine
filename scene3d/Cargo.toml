@@ -2,9 +2,9 @@
 name = "turbine_scene3d"
 version = "0.41.0"
 authors = ["Sven Nilsen <bvssvni@gmail.com>"]
-description = "Scene rendering for the Turbine engine"
+description = "Scene graph rendering for the Turbine engine"
 readme = "README.md"
-license = "MIT"
+license = "MIT OR Apache-2.0"
 keywords = ["turbine", "rendering", "dynamic", "piston"]
 repository = "https://github.com/PistonDevelopers/turbine.git"
 homepage = "https://github.com/PistonDevelopers/turbine"

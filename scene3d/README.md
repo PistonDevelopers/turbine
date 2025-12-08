@@ -1,6 +1,6 @@
 # Turbine-Scene3D
 
-Scene rendering for the Turbine game engine.
+Scene graph rendering for the Turbine game engine.
 
 <video width="320" height="240" controls>
   <source src="https://i.imgur.com/M0frz9B.mp4" type="video/mp4">
