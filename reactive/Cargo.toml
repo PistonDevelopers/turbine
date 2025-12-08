@@ -9,6 +9,7 @@ keywords = ["turbine", "reactive", "functional", "dynamic", "piston"]
 repository = "https://github.com/PistonDevelopers/turbine.git"
 homepage = "https://github.com/PistonDevelopers/turbine"
 documentation = "https://docs.rs/turbine_reactive"
+edition = "2024"
 
 [dependencies]
 vecmath = "0.3.1"

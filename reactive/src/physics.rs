@@ -1,4 +1,4 @@
-use *;
+use crate::*;
 
 /// Stores intermediate data for physics simulation.
 pub struct Physics<T> {

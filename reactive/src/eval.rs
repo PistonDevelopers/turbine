@@ -1,4 +1,4 @@
-use *;
+use crate::*;
 
 impl<T> Reactor<T> {
     /// Evaluate bool.

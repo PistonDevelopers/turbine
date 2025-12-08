@@ -1,4 +1,4 @@
-use *;
+use crate::*;
 
 /// Spline for scalars.
 pub type Spline1<T> = fns::Spline<ptr::Point1<T>, T>;
