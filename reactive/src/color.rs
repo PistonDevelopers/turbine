@@ -1,6 +1,6 @@
 //! Helper methods for colors
 
-use types::{Color, ColorComponent};
+use crate::types::{Color, ColorComponent};
 
 /// Color space.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

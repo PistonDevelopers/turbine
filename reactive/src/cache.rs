@@ -1,4 +1,4 @@
-use *;
+use crate::*;
 
 use fnv::FnvHashMap as HashMap;
 

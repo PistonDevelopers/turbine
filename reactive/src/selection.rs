@@ -1,4 +1,4 @@
-use *;
+use crate::*;
 
 /// Stores selection state.
 pub struct Selection<T> {

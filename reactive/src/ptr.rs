@@ -4,34 +4,34 @@ use std::marker::PhantomData;
 
 /// Points to bool.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub struct Bool(usize);
+pub struct Bool(pub usize);
 /// Points to a scalar.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub struct Point1<T>(pub(crate) usize, PhantomData<T>);
+pub struct Point1<T>(pub usize, pub PhantomData<T>);
 /// Points to a 2D point.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub struct Point2<T>(pub(crate) usize, PhantomData<T>);
+pub struct Point2<T>(pub usize, pub PhantomData<T>);
 /// Points to a 3D point.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub struct Point3<T>(pub(crate) usize, PhantomData<T>);
+pub struct Point3<T>(pub usize, pub PhantomData<T>);
 /// Points to a 4D point.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub struct Point4<T>(pub(crate) usize, PhantomData<T>);
+pub struct Point4<T>(pub usize, pub PhantomData<T>);
 /// Points to a spline.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub struct Spline<T>(usize, PhantomData<T>);
+pub struct Spline<T>(pub usize, pub PhantomData<T>);
 /// Points to a surface.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub struct Surface<T>(usize, PhantomData<T>);
+pub struct Surface<T>(pub usize, pub PhantomData<T>);
 /// Points to a color.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub struct Color(usize);
+pub struct Color(pub usize);
 /// Points to a color spline.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub struct ColorSpline(usize);
+pub struct ColorSpline(pub usize);
 /// Points to a bone.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub struct Bone<T>(usize, PhantomData<T>);
+pub struct Bone<T>(pub usize, pub PhantomData<T>);
 
 macro_rules! from_impl {
     ($point:ident) => {

@@ -10,7 +10,7 @@
 //! Since the function returns a 3D point, this particular `Time` variant
 //! needs to be stored in the enum for `Point3`.
 
-use *;
+use crate::*;
 use ptr;
 
 /// Boolean values.
