@@ -1,26 +1,12 @@
-# turbine
+# Turbine
 
-<p align="center">
-  <a href="https://gitter.im/PistonDevelopers/turbine">
-    <img src="https://img.shields.io/badge/GITTER-join%20chat-green.svg?style=flat-square" alt="Gitter Chat">
-  </a>
-</p>
+3D game engine for content production
 
-A 3D game engine with built-in editor
+### Design
 
-*Notice! This project is in early phase. Expect bugs and missing features.*
+Reexports:
 
-### Development
+- [turbine_process3d](https://github.com/PistonDevelopers/turbine/tree/master/process3d)
+- [turbine_reactive](https://github.com/PistonDevelopers/turbine/tree/master/reactive)
+- [turbine_scene3d](https://github.com/PistonDevelopers/turbine/tree/master/scene3d)
 
-Some parts of the engine will first be tested and developed as part of other projects.
-For example, since Gfx is currently under heavy development,
-some VR features will be developed using OpenGL and later ported to Gfx.
-
-### Plans
-
-- UI: [Conrod](https://github.com/pistondevelopers/conrod)
-- Graphics: [Gfx](https://github.com/gfx-rs/gfx)
-- Scripting: [Dyon](https://github.com/pistondevelopers/dyon)
-- Reactive Design: [Turbine-Reactive](./reactive)
-- Scene Rendering: [Turbine-Scene3D](./scene3d)
-- VR support: [Rust-OpenVR](https://github.com/rust-openvr/rust-openvr)
