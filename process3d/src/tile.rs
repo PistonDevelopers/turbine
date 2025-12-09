@@ -1,4 +1,4 @@
-//! Tile rendering algorithms.
+//! # Tile rendering algorithms
 
 use crate::{PixelPos, Point, RayHit, RayHitAll, TilePos, Triangle, Uv};
 use crate::cam::CameraPerspective;

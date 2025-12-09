@@ -1,4 +1,4 @@
-//! Performance profiling.
+//! # Performance profiling
 
 use crate::mask::CompressedMasks;
 use crate::PixelPos;

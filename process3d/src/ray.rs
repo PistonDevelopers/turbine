@@ -1,4 +1,4 @@
-//! Ray algorithms.
+//! # Ray algorithms
 
 use crate::{Chunk, IndexFlag, PixelPos, Point, Ray, RayHit, RayHitAll, Triangle};
 use crate::frustrum::{near_dim, near_uv_pos};

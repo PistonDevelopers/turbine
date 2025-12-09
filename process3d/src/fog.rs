@@ -1,4 +1,4 @@
-//! # Fog
+//! # Fog algorithms
 //!
 //! This module contains functionality to process fog effects.
 

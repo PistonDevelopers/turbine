@@ -1,4 +1,4 @@
-//! Quad algorithms.
+//! # Quad algorithms
 
 use crate::{Quad, Triangle};
 

@@ -1,4 +1,4 @@
-//! Compressed bit masks.
+//! # Compressed bit masks
 
 /// A single compressed “word” in our run‐length encoding.
 ///

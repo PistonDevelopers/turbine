@@ -1,4 +1,4 @@
-//! Rendering.
+//! # Rendering
 
 use crate::color::*;
 use crate::ray::*;

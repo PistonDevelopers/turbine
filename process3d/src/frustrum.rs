@@ -1,4 +1,4 @@
-//! Frustrum algorithms.
+//! # Frustrum algorithms
 
 use crate::{Aabb, Chunk, Plane, Point, RayHit, Triangle, Uv};
 use crate::triangle::{triangle_aabb, triangle_plane};
