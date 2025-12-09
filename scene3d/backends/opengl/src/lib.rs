@@ -18,6 +18,8 @@ use turbine_scene3d::*;
 
 use std::path::Path;
 
+const DEG_TO_RAD: f32 = 0.017453292519943295;
+
 /// Stores scene data.
 pub struct Scene {
     /// Scene settings.
@@ -494,7 +496,7 @@ impl Scene {
 
     /// Rotate model around x axis with degrees.
     pub fn rotate_x_deg(&mut self, deg: f32) {
-        let angle = deg * 0.017453292519943295;
+        let angle = deg * DEG_TO_RAD;
         let cos = angle.cos();
         let sin = angle.sin();
         let mat = [
@@ -508,7 +510,7 @@ impl Scene {
 
     /// Rotate model around y axis with degrees.
     pub fn rotate_y_deg(&mut self, deg: f32) {
-        let angle = deg * 0.017453292519943295;
+        let angle = deg * DEG_TO_RAD;
         let cos = angle.cos();
         let sin = angle.sin();
         let mat = [
@@ -522,7 +524,7 @@ impl Scene {
 
     /// Rotate model around z axis with degrees.
     pub fn rotate_z_deg(&mut self, deg: f32) {
-        let angle = deg * 0.017453292519943295;
+        let angle = deg * DEG_TO_RAD;
         let cos = angle.cos();
         let sin = angle.sin();
         let mat = [
