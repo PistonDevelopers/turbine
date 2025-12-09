@@ -2,10 +2,20 @@
 
 3D game engine for content production
 
+## Design
+
+Reexports:
+
+- [turbine_process3d](https://github.com/PistonDevelopers/turbine/tree/master/process3d)
+- [turbine_reactive](https://github.com/PistonDevelopers/turbine/tree/master/reactive)
+- [turbine_scene3d](https://github.com/PistonDevelopers/turbine/tree/master/scene3d)
+
+## About Content Production
+
 Content production can be described from two perspectives:
 
-- Production perspective
-- Content perspective
+- [Production perspective](#production-perspective-content-production-vs-game-engine)
+- [Content perspective](#content-perspective-content-production-vs-data)
 
 ### Production perspective: Content Production vs Game Engine
 
@@ -52,11 +62,3 @@ but used to speed up design iterations.
 
 Requirements to performance and flexibility can differ.
 This can depend on the specifics of projects or tools.
-
-### Design
-
-Reexports:
-
-- [turbine_process3d](https://github.com/PistonDevelopers/turbine/tree/master/process3d)
-- [turbine_reactive](https://github.com/PistonDevelopers/turbine/tree/master/reactive)
-- [turbine_scene3d](https://github.com/PistonDevelopers/turbine/tree/master/scene3d)
