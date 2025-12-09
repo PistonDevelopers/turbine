@@ -538,7 +538,7 @@ impl Scene {
 
     /// Rotate model around axis with degrees.
     pub fn rotate_axis_deg(&mut self, axis: Vector3<f32>, deg: f32) {
-        let angle = deg * 0.017453292519943295;
+        let angle = deg * DEG_TO_RAD;
         let cos = angle.cos();
         let sin = angle.sin();
         let mat = [
