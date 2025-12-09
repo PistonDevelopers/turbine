@@ -1,4 +1,4 @@
-//! Cube algorithms.
+//! # Cube algorithms
 
 use crate::{Aabb, Quad, Cube};
 use crate::consume::Consumer;

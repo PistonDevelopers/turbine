@@ -1,4 +1,4 @@
-//! Triangle algorithms.
+//! # Triangle algorithms
 
 use crate::{Aabb, Chunk, Point, Plane, Triangle};
 use crate::mask::CompressedMasks;

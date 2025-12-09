@@ -1,4 +1,4 @@
-//! Mathematical algorithms.
+//! # Mathematical algorithms
 
 pub use vecmath::{
     mat4_id,

@@ -1,4 +1,4 @@
-//! Produce Pattern.
+//! # Produce Pattern
 
 use crate::{Aabb, Chunk, Cube, Matrix4, Point, Quad, Triangle};
 

@@ -1,4 +1,4 @@
-//! Consume Pattern.
+//! # Consume Pattern
 //!
 //! The Consume Pattern is used for generic programming of processing algorithms.
 //! It lifts 3D processing algorithms into as many possible compatible data structure targets.

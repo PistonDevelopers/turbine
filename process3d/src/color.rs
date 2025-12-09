@@ -1,4 +1,4 @@
-//! Helper functions for colors.
+//! # Helper functions for colors
 
 use crate::{Rgb, Rgba};
 
