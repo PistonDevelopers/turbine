@@ -10,7 +10,7 @@ use piston::event_loop::*;
 use piston::input::RenderEvent;
 use turbine_scene3d::*;
 use turbine_scene3d::Command::*;
-use turbine_scene3d_opengl::*;
+use turbine_scene3d_opengl::State;
 use vecmath::*;
 use camera_controllers::*;
 
@@ -22,7 +22,7 @@ fn main() {
             .exit_on_esc(true);
         let mut window: Sdl2Window = settings.build().unwrap();
         window.set_capture_cursor(true);
-        let mut scene = Scene::new(SceneSettings::new());
+        let mut scene: Scene<State> = Scene::new(SceneSettings::new(), State::new());
         let vertex_shader = scene.vertex_shader(include_str!("../../../assets/colored_cube.glslv"))
             .unwrap();
         let fragment_shader = scene.fragment_shader(include_str!("../../../assets/colored_cube.glslf"))
