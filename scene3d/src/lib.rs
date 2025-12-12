@@ -6,9 +6,15 @@ use std::io;
 
 use vecmath::{Matrix4, Vector2, Vector3};
 
+pub use scene::*;
+
+mod scene;
+
 /// Stores a scene command.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Command {
+    /// Call external action.
+    CallExternal(External),
     /// Use program.
     UseProgram(Program),
     /// Set model-view-projection transform.
@@ -143,6 +149,9 @@ pub struct CommandList(pub usize);
 /// References a texture object.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Texture(pub usize);
+/// References an external action.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub struct External(pub usize);
 
 impl ColorBuffer {
     /// Length of color buffer.
@@ -259,43 +268,6 @@ impl ObjMesh {
             normals
         })
     }
-}
-
-/// Stores scene settings.
-#[derive(Clone)]
-pub struct SceneSettings {
-    /// Whether to clear depth buffer.
-    pub clear_depth_buffer: bool,
-    /// Whether to enable depth test.
-    pub clear_enable_depth_test: bool,
-}
-
-impl SceneSettings {
-    /// Returns new scene settings with default settings.
-    pub fn new() -> SceneSettings {
-        SceneSettings {
-            clear_depth_buffer: true,
-            clear_enable_depth_test: true,
-        }
-    }
-
-    /// Set whether to clear depth buffer on clear.
-    pub fn clear_depth_buffer(mut self, val: bool) -> Self {
-        self.clear_depth_buffer = val;
-        self
-    }
-
-    /// Set whether to enable depth test on clear.
-    ///
-    /// Uses depth test function `LESS` by default.
-    pub fn clear_enable_depth_test(mut self, val: bool) -> Self {
-        self.clear_enable_depth_test = val;
-        self
-    }
-}
-
-impl Default for SceneSettings {
-    fn default() -> Self {SceneSettings::new()}
 }
 
 #[cfg(test)]
