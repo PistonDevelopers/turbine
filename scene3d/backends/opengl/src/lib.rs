@@ -65,108 +65,108 @@ impl Backend for State {
     type ImageError = image::ImageError;
 
     /// Enable framebuffer sRGB.
-    fn enable_framebuffer_srgb(&self) {
+    fn enable_framebuffer_srgb(&mut self) {
         unsafe {
             gl::Enable(gl::FRAMEBUFFER_SRGB);
         }
     }
 
     /// Disable framebuffer sRGB.
-    fn disable_framebuffer_srgb(&self) {
+    fn disable_framebuffer_srgb(&mut self) {
         unsafe {
             gl::Disable(gl::FRAMEBUFFER_SRGB);
         }
     }
 
     /// Enable blend.
-    fn enable_blend(&self) {
+    fn enable_blend(&mut self) {
         unsafe {
             gl::Enable(gl::BLEND);
         }
     }
 
     /// Disable blend.
-    fn disable_blend(&self) {
+    fn disable_blend(&mut self) {
         unsafe {
             gl::Disable(gl::BLEND);
         }
     }
 
     /// Use program.
-    fn use_program(&self, program: Program) {
+    fn use_program(&mut self, program: Program) {
         unsafe {gl::UseProgram(self.programs[program.0])}
     }
 
     /// Set matrix uniform.
-    fn set_matrix4(&self, matrix_id: Matrix4Uniform, val: Matrix4<f32>) {
+    fn set_matrix4(&mut self, matrix_id: Matrix4Uniform, val: Matrix4<f32>) {
         unsafe {
             gl::UniformMatrix4fv(self.uniforms[matrix_id.0] as i32, 1, gl::FALSE, &val[0][0])
         }
     }
 
     /// Set 2D vector uniform.
-    fn set_vector2(&self, v_id: Vector2Uniform, v: Vector2<f32>) {
+    fn set_vector2(&mut self, v_id: Vector2Uniform, v: Vector2<f32>) {
         unsafe {
             gl::Uniform2f(self.uniforms[v_id.0] as i32, v[0], v[1]);
         }
     }
 
     /// Set 3D vector uniform.
-    fn set_vector3(&self, v_id: Vector3Uniform, v: Vector3<f32>) {
+    fn set_vector3(&mut self, v_id: Vector3Uniform, v: Vector3<f32>) {
         unsafe {
             gl::Uniform3f(self.uniforms[v_id.0] as i32, v[0], v[1], v[2]);
         }
     }
 
     /// Set f32 uniform.
-    fn set_f32(&self, f_id: F32Uniform, v: f32) {
+    fn set_f32(&mut self, f_id: F32Uniform, v: f32) {
         unsafe {
             gl::Uniform1f(self.uniforms[f_id.0] as i32, v);
         }
     }
 
     /// Set texture.
-    fn set_texture(&self, texture_id: Texture) {
+    fn set_texture(&mut self, texture_id: Texture) {
         unsafe {gl::BindTexture(gl::TEXTURE_2D, self.textures[texture_id.0])};
     }
 
     /// Enable cull face.
-    fn enable_cull_face(&self) {
+    fn enable_cull_face(&mut self) {
         unsafe {
             gl::Enable(gl::CULL_FACE);
         }
     }
 
     /// Disable cull face.
-    fn disable_cull_face(&self) {
+    fn disable_cull_face(&mut self) {
         unsafe {
             gl::Disable(gl::CULL_FACE);
         }
     }
 
     /// Cull front face.
-    fn cull_face_front(&self) {
+    fn cull_face_front(&mut self) {
         unsafe {
             gl::CullFace(gl::FRONT);
         }
     }
 
     /// Cull back face.
-    fn cull_face_back(&self) {
+    fn cull_face_back(&mut self) {
         unsafe {
             gl::CullFace(gl::BACK);
         }
     }
 
     /// Cull both front and back face.
-    fn cull_face_front_and_back(&self) {
+    fn cull_face_front_and_back(&mut self) {
         unsafe {
             gl::CullFace(gl::FRONT_AND_BACK);
         }
     }
 
     /// Draws triangles.
-    fn draw_triangles(&self, vertex_array: VertexArray, len: usize) {
+    fn draw_triangles(&mut self, vertex_array: VertexArray, len: usize) {
         unsafe {
             gl::BindVertexArray(self.vertex_arrays[vertex_array.0]);
             gl::DrawArrays(gl::TRIANGLES, 0, len as i32);
@@ -174,7 +174,7 @@ impl Backend for State {
     }
 
     /// Draws triangle strip.
-    fn draw_triangle_strip(&self, vertex_array: VertexArray, len: usize) {
+    fn draw_triangle_strip(&mut self, vertex_array: VertexArray, len: usize) {
         unsafe {
             gl::BindVertexArray(self.vertex_arrays[vertex_array.0]);
             gl::DrawArrays(gl::TRIANGLE_STRIP, 0, len as i32);
@@ -182,7 +182,7 @@ impl Backend for State {
     }
 
     /// Draws points.
-    fn draw_points(&self, vertex_array: VertexArray, len: usize) {
+    fn draw_points(&mut self, vertex_array: VertexArray, len: usize) {
         unsafe {
             gl::BindVertexArray(self.vertex_arrays[vertex_array.0]);
             gl::DrawArrays(gl::POINTS, 0, len as i32);
@@ -190,7 +190,7 @@ impl Backend for State {
     }
 
     /// Draws lines.
-    fn draw_lines(&self, vertex_array: VertexArray, len: usize) {
+    fn draw_lines(&mut self, vertex_array: VertexArray, len: usize) {
         unsafe {
             gl::BindVertexArray(self.vertex_arrays[vertex_array.0]);
             gl::DrawArrays(gl::LINES, 0, len as i32);
@@ -198,7 +198,7 @@ impl Backend for State {
     }
 
     /// Clear background with color.
-    fn clear(&self, bg_color: [f32; 4], settings: &SceneSettings) {
+    fn clear(&mut self, bg_color: [f32; 4], settings: &SceneSettings) {
         unsafe {
             gl::ClearColor(bg_color[0], bg_color[1], bg_color[2], bg_color[3]);
             if settings.clear_depth_buffer {
@@ -403,7 +403,7 @@ impl Backend for State {
         self.uniforms.push(uniform_location);
         Ok(F32Uniform(id))
     }
-        
+
     /// Create 2D vector uniform.
     fn vector2_uniform(
         &mut self,
