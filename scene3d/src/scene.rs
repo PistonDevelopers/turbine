@@ -23,7 +23,6 @@ use crate::{
     VertexShader,
 };
 
-
 /// Stores scene settings.
 #[derive(Clone)]
 pub struct SceneSettings {
@@ -61,51 +60,54 @@ impl SceneSettings {
     }
 }
 
+/// Function type of external action.
+pub type ExternalFn<State> = fn(&mut Scene<State>);
+
 /// Implemented by Scene backend states.
 pub trait Backend {
     /// The image error type.
     type ImageError;
 
     /// Set texture.
-    fn set_texture(&self, texture_id: Texture);
+    fn set_texture(&mut self, texture_id: Texture);
     /// Draws points.
-    fn draw_points(&self, vertex_array: VertexArray, len: usize);
+    fn draw_points(&mut self, vertex_array: VertexArray, len: usize);
     /// Draws lines.
-    fn draw_lines(&self, vertex_array: VertexArray, len: usize);
+    fn draw_lines(&mut self, vertex_array: VertexArray, len: usize);
     /// Draws triangle strip.
-    fn draw_triangle_strip(&self, vertex_array: VertexArray, len: usize);
+    fn draw_triangle_strip(&mut self, vertex_array: VertexArray, len: usize);
     /// Draws triangles.
-    fn draw_triangles(&self, vertex_array: VertexArray, len: usize);
+    fn draw_triangles(&mut self, vertex_array: VertexArray, len: usize);
     /// Enable framebuffer sRGB.
-    fn enable_framebuffer_srgb(&self);
+    fn enable_framebuffer_srgb(&mut self);
     /// Disable framebuffer sRGB.
-    fn disable_framebuffer_srgb(&self);
+    fn disable_framebuffer_srgb(&mut self);
     /// Enable blend.
-    fn enable_blend(&self);
+    fn enable_blend(&mut self);
     /// Disable blend.
-    fn disable_blend(&self);
+    fn disable_blend(&mut self);
     /// Enable cull face.
-    fn enable_cull_face(&self);
+    fn enable_cull_face(&mut self);
     /// Disable cull face.
-    fn disable_cull_face(&self);
+    fn disable_cull_face(&mut self);
     /// Cull front face.
-    fn cull_face_front(&self);
+    fn cull_face_front(&mut self);
     /// Cull back face.
-    fn cull_face_back(&self);
+    fn cull_face_back(&mut self);
     /// Cull both front and back face.
-    fn cull_face_front_and_back(&self);
+    fn cull_face_front_and_back(&mut self);
     /// Clear background with color.
-    fn clear(&self, bg_color: [f32; 4], settings: &SceneSettings);
+    fn clear(&mut self, bg_color: [f32; 4], settings: &SceneSettings);
     /// Set f32 uniform.
-    fn set_f32(&self, f_id: F32Uniform, v: f32);
+    fn set_f32(&mut self, f_id: F32Uniform, v: f32);
     /// Set 2D vector uniform.
-    fn set_vector2(&self, v_id: Vector2Uniform, v: Vector2<f32>);
+    fn set_vector2(&mut self, v_id: Vector2Uniform, v: Vector2<f32>);
     /// Set 3D vector uniform.
-    fn set_vector3(&self, v_id: Vector3Uniform, v: Vector3<f32>);
+    fn set_vector3(&mut self, v_id: Vector3Uniform, v: Vector3<f32>);
     /// Set matrix uniform.
-    fn set_matrix4(&self, matrix_id: Matrix4Uniform, val: Matrix4<f32>);
+    fn set_matrix4(&mut self, matrix_id: Matrix4Uniform, val: Matrix4<f32>);
     /// Use program.
-    fn use_program(&self, program: Program);
+    fn use_program(&mut self, program: Program);
     /// Create vertex shader from source.
     fn vertex_shader(
         &mut self,
@@ -200,7 +202,7 @@ pub struct Scene<State> {
     /// Model transform.
     pub model: Matrix4<f32>,
     transform_stack: Vec<Matrix4<f32>>,
-    externals: Vec<fn(&mut Self)>,
+    externals: Vec<ExternalFn<State>>,
 }
 
 const DEG_TO_RAD: f32 = 0.017453292519943295;
@@ -223,7 +225,7 @@ impl<State> Scene<State>
     }
 
     /// Add external action.
-    pub fn external(&mut self, f: fn(&mut Self)) -> External {
+    pub fn external(&mut self, f: ExternalFn<State>) -> External {
         let id = self.externals.len();
         self.externals.push(f);
         External(id)
@@ -353,19 +355,19 @@ impl<State> Scene<State>
     }
 
     /// Set model-view-projection transform uniform.
-    pub fn set_model_view_projection(&self, matrix_id: Matrix4Uniform) {
+    pub fn set_model_view_projection(&mut self, matrix_id: Matrix4Uniform) {
         use vecmath::col_mat4_mul as mul;
         let mvp = mul(mul(self.projection, self.camera), self.model);
         self.state.set_matrix4(matrix_id, mvp);
     }
 
     /// Set view transform uniform.
-    pub fn set_view(&self, matrix_id: Matrix4Uniform) {
+    pub fn set_view(&mut self, matrix_id: Matrix4Uniform) {
         self.state.set_matrix4(matrix_id, self.camera);
     }
 
     /// Set model transform uniform.
-    pub fn set_model(&self, matrix_id: Matrix4Uniform) {
+    pub fn set_model(&mut self, matrix_id: Matrix4Uniform) {
         self.state.set_matrix4(matrix_id, self.model);
     }
 
@@ -386,7 +388,7 @@ impl<State> Scene<State>
     }
 
     /// Clear background with color.
-    pub fn clear(&self, bg_color: [f32; 4]) {
+    pub fn clear(&mut self, bg_color: [f32; 4]) {
         self.state.clear(bg_color, &self.settings);
     }
 
@@ -459,32 +461,32 @@ impl<State> Scene<State>
     }
 
     /// Set f32 uniform.
-    pub fn set_f32(&self, f_id: F32Uniform, v: f32) {
+    pub fn set_f32(&mut self, f_id: F32Uniform, v: f32) {
         self.state.set_f32(f_id, v)
     }
 
     /// Set 2D vector uniform.
-    pub fn set_vector2(&self, v_id: Vector2Uniform, v: Vector2<f32>) {
+    pub fn set_vector2(&mut self, v_id: Vector2Uniform, v: Vector2<f32>) {
         self.state.set_vector2(v_id, v)
     }
 
     /// Set 3D vector uniform.
-    pub fn set_vector3(&self, v_id: Vector3Uniform, v: Vector3<f32>) {
+    pub fn set_vector3(&mut self, v_id: Vector3Uniform, v: Vector3<f32>) {
         self.state.set_vector3(v_id, v)
     }
 
     /// Set matrix uniform.
-    pub fn set_matrix4(&self, matrix_id: Matrix4Uniform, val: Matrix4<f32>) {
+    pub fn set_matrix4(&mut self, matrix_id: Matrix4Uniform, val: Matrix4<f32>) {
         self.state.set_matrix4(matrix_id, val)
     }
 
     /// Set texture.
-    pub fn set_texture(&self, texture_id: Texture) {
+    pub fn set_texture(&mut self, texture_id: Texture) {
         self.state.set_texture(texture_id)
     }
 
     /// Use program.
-    pub fn use_program(&self, program: Program) {
+    pub fn use_program(&mut self, program: Program) {
         self.state.use_program(program)
     }
 
@@ -541,67 +543,67 @@ impl<State> Scene<State>
     }
 
     /// Enable framebuffer sRGB.
-    pub fn enable_framebuffer_srgb(&self) {
+    pub fn enable_framebuffer_srgb(&mut self) {
         self.state.enable_framebuffer_srgb()
     }
 
     /// Disable framebuffer sRGB.
-    pub fn disable_framebuffer_srgb(&self) {
+    pub fn disable_framebuffer_srgb(&mut self) {
         self.state.disable_framebuffer_srgb()
     }
 
     /// Enable blend.
-    pub fn enable_blend(&self) {
+    pub fn enable_blend(&mut self) {
         self.state.enable_blend()
     }
 
     /// Disable blend.
-    pub fn disable_blend(&self) {
+    pub fn disable_blend(&mut self) {
         self.state.disable_blend()
     }
 
     /// Enable cull face.
-    pub fn enable_cull_face(&self) {
+    pub fn enable_cull_face(&mut self) {
         self.state.enable_cull_face()
     }
 
     /// Disable cull face.
-    pub fn disable_cull_face(&self) {
+    pub fn disable_cull_face(&mut self) {
         self.state.disable_cull_face()
     }
 
     /// Cull front face.
-    pub fn cull_face_front(&self) {
+    pub fn cull_face_front(&mut self) {
         self.state.cull_face_front()
     }
 
     /// Cull back face.
-    pub fn cull_face_back(&self) {
+    pub fn cull_face_back(&mut self) {
         self.state.cull_face_back()
     }
 
     /// Cull both front and back face.
-    pub fn cull_face_front_and_back(&self) {
+    pub fn cull_face_front_and_back(&mut self) {
         self.state.cull_face_front_and_back()
     }
 
     /// Draws triangles.
-    pub fn draw_triangles(&self, vertex_array: VertexArray, len: usize) {
+    pub fn draw_triangles(&mut self, vertex_array: VertexArray, len: usize) {
         self.state.draw_triangles(vertex_array, len)
     }
 
     /// Draws triangle strip.
-    pub fn draw_triangle_strip(&self, vertex_array: VertexArray, len: usize) {
+    pub fn draw_triangle_strip(&mut self, vertex_array: VertexArray, len: usize) {
         self.state.draw_triangle_strip(vertex_array, len)
     }
 
     /// Draws points.
-    pub fn draw_points(&self, vertex_array: VertexArray, len: usize) {
+    pub fn draw_points(&mut self, vertex_array: VertexArray, len: usize) {
         self.state.draw_points(vertex_array, len)
     }
 
     /// Draws lines.
-    pub fn draw_lines(&self, vertex_array: VertexArray, len: usize) {
+    pub fn draw_lines(&mut self, vertex_array: VertexArray, len: usize) {
         self.state.draw_lines(vertex_array, len)
     }
 
