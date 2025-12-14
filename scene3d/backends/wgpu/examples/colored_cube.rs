@@ -28,8 +28,8 @@ fn main() {
                 window.surface_config.clone(),
                 depth_texture_view,
             ));
-        let vs = scene.vertex_shader(include_str!("shaders/color3d.wgsl")).unwrap();
-        let fs = scene.fragment_shader(include_str!("shaders/color3d.wgsl")).unwrap();
+        let vs = scene.vertex_shader(include_str!("../../../assets/colored_cube.wgsl")).unwrap();
+        let fs = scene.fragment_shader(include_str!("../../../assets/colored_cube.wgsl")).unwrap();
         (window, scene, vs, fs)
     };
 
