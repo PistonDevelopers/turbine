@@ -1,6 +1,6 @@
 [package]
 name = "turbine_process3d"
-version = "0.12.0"
+version = "0.12.1"
 edition = "2024"
 description = "Processing for the Turbine game engine"
 readme = "README.md"

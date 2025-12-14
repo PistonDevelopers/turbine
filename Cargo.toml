@@ -1,6 +1,6 @@
 [package]
 name = "turbine"
-version = "0.1.1"
+version = "0.2.0"
 edition = "2024"
 authors = [
     "bvssvni <bvssvni@gmail.com>",
@@ -27,5 +27,5 @@ version = "0.2.0"
 path = "reactive"
 
 [dependencies.turbine_scene3d]
-version = "0.42.0"
+version = "0.43.0"
 path = "scene3d"
