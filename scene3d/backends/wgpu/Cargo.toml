@@ -1,0 +1,18 @@
+[package]
+name = "turbine_scene3d-wgpu"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies.turbine_scene3d]
+version = "0.42.0"
+path = "../../"
+
+[dependencies]
+vecmath = "1.0.0"
+image = "0.25.5"
+wgpu = "27.0.1"
+bytemuck = "1.24.0"
+
+[dev-dependencies]
+camera_controllers = "0.36.0"
+piston_window = "0.137.0"
