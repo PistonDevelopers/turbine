@@ -1,6 +1,14 @@
 [package]
 name = "turbine_scene3d-wgpu"
 version = "0.1.0"
+authors = ["Sven Nilsen <bvssvni@gmail.com>"]
+description = "WGPU backend for Turbine-Scene3D"
+readme = "README.md"
+license = "MIT OR Apache-2.0"
+keywords = ["turbine", "rendering", "scene3d", "wgpu", "piston"]
+repository = "https://github.com/PistonDevelopers/turbine.git"
+homepage = "https://github.com/PistonDevelopers/turbine"
+documentation = "https://docs.rs/turbine_scene3d-wgpu"
 edition = "2024"
 
 [dependencies.turbine_scene3d]
