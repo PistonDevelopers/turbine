@@ -1,31 +1,35 @@
-extern crate piston;
-extern crate sdl2_window;
-extern crate turbine_scene3d;
-extern crate turbine_scene3d_opengl;
-extern crate vecmath;
-extern crate camera_controllers;
-
-use piston::window::*;
-use piston::event_loop::*;
-use piston::input::{RenderEvent, UpdateEvent};
+use ::piston_window::*;
 use turbine_scene3d::*;
 use turbine_scene3d::Command::*;
-use turbine_scene3d_opengl::State;
+use turbine_scene3d_wgpu::{utils, State};
 use vecmath::*;
 use camera_controllers::*;
 
 fn main() {
+    let mut capture_cursor = false;
     let (mut window, mut scene, vertex_shader, fragment_shader) = {
-        use sdl2_window::Sdl2Window;
         let settings = WindowSettings::new("monkey", [512; 2])
             .samples(4)
             .exit_on_esc(true);
-        let mut window: Sdl2Window = settings.build().unwrap();
-        window.set_capture_cursor(true);
-        let mut scene: Scene<State> = Scene::new(SceneSettings::new(), State::new());
-        let vertex_shader = scene.vertex_shader(include_str!("../../../assets/basic_shading.glslv"))
+        let mut window: PistonWindow = settings.build().unwrap();
+        window.set_capture_cursor(capture_cursor);
+
+        let depth_texture_view = utils::create_depth_texture_view(
+            &window.device,
+            &window.surface_config,
+            1,
+            "depth_texture",
+        );
+
+        let mut scene: Scene<State> = Scene::new(SceneSettings::new(), State::new(
+            window.device.clone(),
+            window.queue.clone(),
+            window.surface_config.clone(),
+            depth_texture_view,
+        ));
+        let vertex_shader = scene.vertex_shader(include_str!("../../../assets/basic_shading.wgsl"))
             .unwrap();
-        let fragment_shader = scene.fragment_shader(include_str!("../../../assets/basic_shading.glslf"))
+        let fragment_shader = scene.fragment_shader(include_str!("../../../assets/basic_shading.wgsl"))
             .unwrap();
         (window, scene, vertex_shader, fragment_shader)
     };
@@ -38,7 +42,7 @@ fn main() {
         FirstPersonSettings::keyboard_wasd()
     );
 
-    let (monkey, light_position_id, ambient_light_id, program) = {
+    let (monkey, program, light_position_id, ambient_light_id) = {
         let obj_mesh = ObjMesh::load("../../assets/monkey.obj").unwrap();
         let vertex_array = scene.vertex_array();
         let vertex_buffer = scene.vertex_buffer3(vertex_array, 0, &obj_mesh.vertices);
@@ -48,9 +52,9 @@ fn main() {
 
         let program = scene.program_from_vertex_fragment(vertex_shader, fragment_shader);
 
-        let matrix_id = scene.matrix4_uniform(program, "MVP").unwrap();
-        let model_matrix_id = scene.matrix4_uniform(program, "M").unwrap();
-        let view_matrix_id = scene.matrix4_uniform(program, "V").unwrap();
+        let matrix_id = scene.matrix4_uniform(program, "mvp").unwrap();
+        let model_matrix_id = scene.matrix4_uniform(program, "m").unwrap();
+        let view_matrix_id = scene.matrix4_uniform(program, "v").unwrap();
         let light_position_id = scene.vector3_uniform(program, "LightPosition_worldspace").unwrap();
         let ambient_light_id = scene.f32_uniform(program, "ambientLight").unwrap();
 
@@ -60,7 +64,7 @@ fn main() {
             SetModel(model_matrix_id),
             SetTexture(texture),
             DrawTriangles(vertex_array, vertex_buffer.len()),
-        ]), light_position_id, ambient_light_id, program)
+        ]), program, light_position_id, ambient_light_id)
     };
 
     let monkeys = frame_graph.command_list(vec![
@@ -80,9 +84,12 @@ fn main() {
 
     let mut time: f32 = 0.0;
     while let Some(e) = events.next(&mut window) {
-        first_person.event(&e);
+        if capture_cursor {first_person.event(&e)};
 
         if let Some(args) = e.render_args() {
+            let surface_texture = window.surface.get_current_texture().unwrap();
+            scene.state.surface_texture = Some(surface_texture);
+
             let proj = get_projection(&window);
             scene.projection(proj);
             scene.camera(first_person.camera(args.ext_dt).orthogonal());
@@ -94,6 +101,20 @@ fn main() {
             scene.set_f32(ambient_light_id, 0.1);
 
             scene.draw(monkeys, &frame_graph);
+
+            scene.state.end_render_pass();
+            if let Some(surface_texture) = std::mem::replace(
+                &mut scene.state.surface_texture, None
+            ) {
+                surface_texture.present();
+            }
+        }
+
+        if let Some(button) = e.press_args() {
+            if let Button::Keyboard(Key::C) = button {
+                capture_cursor = !capture_cursor;
+                window.set_capture_cursor(capture_cursor);
+            }
         }
 
         if let Some(args) = e.update_args() {

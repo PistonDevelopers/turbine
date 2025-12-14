@@ -46,13 +46,26 @@ pub fn fragment_state<'a>(
 
 /// Create color target state.
 pub fn color_target_state_replace(
-    surface_config: &wgpu::SurfaceConfiguration
+    surface_config: &wgpu::SurfaceConfiguration,
+    blend: Option<wgpu::BlendState>,
 ) -> wgpu::ColorTargetState {
     ColorTargetState {
         format: surface_config.format,
-        blend: Some(wgpu::BlendState::REPLACE),
+        blend,
         write_mask: wgpu::ColorWrites::ALL,
     }}
+
+/// Create f32 uniform buffer.
+pub fn f32_uniform_buffer(s: f32, device: &Device) -> Buffer {
+    use wgpu::BufferUsages as Bu;
+    device.create_buffer_init(
+        &wgpu::util::BufferInitDescriptor {
+            label: Some("Uniform buffer"),
+            contents: bytemuck::cast_slice(&[s]),
+            usage: Bu::UNIFORM | Bu::COPY_DST,
+        }
+    )
+}
 
 /// Create matrix4 uniform buffer.
 pub fn matrix4_uniform_buffer(mvp: [[f32; 4]; 4], device: &Device) -> Buffer {
@@ -61,6 +74,30 @@ pub fn matrix4_uniform_buffer(mvp: [[f32; 4]; 4], device: &Device) -> Buffer {
         &wgpu::util::BufferInitDescriptor {
             label: Some("Uniform buffer"),
             contents: bytemuck::cast_slice(&[mvp]),
+            usage: Bu::UNIFORM | Bu::COPY_DST,
+        }
+    )
+}
+
+/// Create vector2 uniform buffer.
+pub fn vector2_uniform_buffer(v: [f32; 2], device: &Device) -> Buffer {
+    use wgpu::BufferUsages as Bu;
+    device.create_buffer_init(
+        &wgpu::util::BufferInitDescriptor {
+            label: Some("Uniform buffer"),
+            contents: bytemuck::cast_slice(&[v]),
+            usage: Bu::UNIFORM | Bu::COPY_DST,
+        }
+    )
+}
+
+/// Create vector3 uniform buffer.
+pub fn vector3_uniform_buffer(v: [f32; 3], device: &Device) -> Buffer {
+    use wgpu::BufferUsages as Bu;
+    device.create_buffer_init(
+        &wgpu::util::BufferInitDescriptor {
+            label: Some("Uniform buffer"),
+            contents: bytemuck::cast_slice(&[v]),
             usage: Bu::UNIFORM | Bu::COPY_DST,
         }
     )
@@ -86,16 +123,38 @@ pub fn uniform_bind_group_layout(binding: u32, device: &Device) -> BindGroupLayo
 /// Create uniform bind group.
 pub fn uniform_bind_group(
     uniform_layout: &BindGroupLayout,
-    uniform_buffer: &Buffer,
+    entries: &[wgpu::BindGroupEntry],
     device: &Device,
 ) -> BindGroup {
     device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some("uniform_bind_group"),
         layout: uniform_layout,
-        entries: &[wgpu::BindGroupEntry {
-            binding: 0,
-            resource: uniform_buffer.as_entire_binding(),
-        }],
+        entries,
+    })
+}
+
+/// Create texture bind group layout.
+pub fn texture_bind_group_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
+    device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+        label: Some("Texture Bind Group Layout"),
+        entries: &[
+            wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Texture {
+                    multisampled: false,
+                    view_dimension: wgpu::TextureViewDimension::D2,
+                    sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                },
+                count: None,
+            },
+            wgpu::BindGroupLayoutEntry {
+                binding: 1,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                count: None,
+            },
+        ],
     })
 }
 
@@ -143,13 +202,17 @@ pub fn create_depth_texture_view(
 }
 
 /// Create a primitive state.
-pub fn primitive_state() -> PrimitiveState {
+pub fn primitive_state(
+    topology: wgpu::PrimitiveTopology,
+    polygon_mode: wgpu::PolygonMode,
+    cull_mode: Option<wgpu::Face>,
+) -> PrimitiveState {
     PrimitiveState {
-        topology: wgpu::PrimitiveTopology::TriangleList,
+        topology,
         strip_index_format: None,
         front_face: wgpu::FrontFace::Ccw,
-        cull_mode: Some(wgpu::Face::Back),
-        polygon_mode: wgpu::PolygonMode::Fill,
+        cull_mode,
+        polygon_mode,
         unclipped_depth: false,
         conservative: false,
     }
@@ -182,6 +245,9 @@ pub fn render_pipeline(
     fs: &wgpu::ShaderModule,
     vertex_buffer_layouts: &[VertexBufferLayout],
     color_targets: &[Option<ColorTargetState>],
+    topology: wgpu::PrimitiveTopology,
+    polygon_mode: wgpu::PolygonMode,
+    cull_mode: Option<wgpu::Face>,
     device: &Device,
 ) -> RenderPipeline {
     device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -189,7 +255,7 @@ pub fn render_pipeline(
         layout: Some(pipeline_layout),
         vertex: vertex_state(vs, vertex_buffer_layouts),
         fragment: Some(fragment_state(fs, color_targets)),
-        primitive: primitive_state(),
+        primitive: primitive_state(topology, polygon_mode, cull_mode),
         depth_stencil: Some(depth_stencil_state()),
         multisample: multisample_state(),
         multiview: None,
