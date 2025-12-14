@@ -132,15 +132,23 @@ pub struct VertexArray(pub usize);
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ColorBuffer(pub usize, pub usize);
 /// References a 3D vertex buffer object.
+///
+/// Stores `id, len`.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct VertexBuffer3(pub usize, pub usize);
 /// References a 2D vertex buffer object.
+///
+/// Stores `id, len`.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct VertexBuffer2(pub usize, pub usize);
 /// References an UV buffer object.
+///
+/// Stores `id, len`.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct UVBuffer(pub usize, pub usize);
 /// References a normal buffer object.
+///
+/// Stores `id, len`.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct NormalBuffer(pub usize, pub usize);
 /// References a command list object.
