@@ -9,7 +9,6 @@ keywords = ["turbine", "rendering", "backend", "piston"]
 repository = "https://github.com/PistonDevelopers/turbine.git"
 homepage = "https://github.com/PistonDevelopers/turbine"
 documentation = "https://docs.rs/turbine_scene3d-opengl"
-exclude = ["assets/*", "backends/*"]
 edition = "2024"
 
 [dependencies.turbine_scene3d]
