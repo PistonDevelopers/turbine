@@ -12,7 +12,7 @@ documentation = "https://docs.rs/turbine_scene3d-wgpu"
 edition = "2024"
 
 [dependencies.turbine_scene3d]
-version = "0.42.0"
+version = "0.43.0"
 path = "../../"
 
 [dependencies]
