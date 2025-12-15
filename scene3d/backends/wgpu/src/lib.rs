@@ -262,6 +262,22 @@ impl State {
         }
     }
 
+    /// Start rendering.
+    pub fn start_render(&mut self, surface: &wgpu::Surface) {
+        let surface_texture = surface.get_current_texture().unwrap();
+        self.surface_texture = Some(surface_texture);
+    }
+
+    /// End rendering.
+    pub fn end_render(&mut self) {
+        self.end_render_pass();
+        if let Some(surface_texture) = std::mem::replace(
+            &mut self.surface_texture, None
+        ) {
+            surface_texture.present();
+        }
+    }
+
     fn draw(
         &mut self,
         va: VertexArray,
