@@ -1,6 +1,7 @@
 #![deny(missing_docs)]
 #![doc = include_str!("../README.md")]
 
+use texture::TextureSettings;
 use turbine_scene3d::*;
 use vecmath::{
     Matrix4,
@@ -704,7 +705,11 @@ impl Backend for State {
         self.programs[program.0].uniforms.push(Uni::Vector3(id));
         Ok(id)
     }
-    fn load_texture<P>(&mut self, path: P) -> Result<Texture, <Self as turbine_scene3d::Backend>::ImageError> where P: AsRef<Path> {
+    fn load_texture<P>(
+        &mut self,
+        path: P,
+        _settings: &TextureSettings,
+    ) -> Result<Texture, <Self as turbine_scene3d::Backend>::ImageError> where P: AsRef<Path> {
         let image = match image::open(path)? {
             image::DynamicImage::ImageRgba8(img) => img,
             x => x.to_rgba8()

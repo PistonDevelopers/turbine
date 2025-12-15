@@ -2,6 +2,7 @@
 
 use std::path::Path;
 use vecmath::{Vector2, Vector3, Matrix4};
+use texture::TextureSettings;
 use crate::{
     ColorBuffer,
     Command,
@@ -172,7 +173,11 @@ pub trait Backend {
         name: &str
     ) -> Result<Vector3Uniform, String>;
     /// Load texture from path.
-    fn load_texture<P: AsRef<Path>>(&mut self, path: P) -> Result<Texture, Self::ImageError>;
+    fn load_texture<P: AsRef<Path>>(
+        &mut self,
+        path: P,
+        settings: &TextureSettings
+    ) -> Result<Texture, Self::ImageError>;
     /// Create normal buffer.
     fn normal_buffer(
         &mut self,
@@ -518,8 +523,12 @@ impl<State> Scene<State>
     }
 
     /// Load texture from path.
-    pub fn load_texture<P: AsRef<Path>>(&mut self, path: P) -> Result<Texture, State::ImageError> {
-        self.state.load_texture(path)
+    pub fn load_texture<P: AsRef<Path>>(
+        &mut self,
+        path: P,
+        settings: &TextureSettings,
+    ) -> Result<Texture, State::ImageError> {
+        self.state.load_texture(path, settings)
     }
 
     /// Create normal buffer.

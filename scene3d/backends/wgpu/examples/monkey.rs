@@ -1,9 +1,10 @@
-use ::piston_window::*;
+use piston_window::*;
 use turbine_scene3d::*;
 use turbine_scene3d::Command::*;
 use turbine_scene3d_wgpu::{utils, State};
 use vecmath::*;
 use camera_controllers::*;
+use texture::TextureSettings;
 
 fn main() {
     let mut capture_cursor = false;
@@ -48,7 +49,8 @@ fn main() {
         let vertex_buffer = scene.vertex_buffer3(vertex_array, 0, &obj_mesh.vertices);
         let _ = scene.uv_buffer(vertex_array, 1, &obj_mesh.uvs);
         let _ = scene.normal_buffer(vertex_array, 2, &obj_mesh.normals);
-        let texture = scene.load_texture("../../assets/monkey.png").unwrap();
+        let texture_settings = TextureSettings::new();
+        let texture = scene.load_texture("../../assets/monkey.png", &texture_settings).unwrap();
 
         let program = scene.program_from_vertex_fragment(vertex_shader, fragment_shader);
 

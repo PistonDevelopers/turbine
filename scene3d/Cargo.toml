@@ -18,3 +18,4 @@ default = []
 [dependencies]
 vecmath = "1.0.0"
 wavefront_obj = "11.0.0"
+piston-texture = "0.9.0"
