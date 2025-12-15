@@ -16,6 +16,8 @@ use turbine_scene3d::*;
 
 use std::path::Path;
 
+mod gl_utils;
+
 /// Implements OpenGL backend.
 pub struct State {
     shaders: Vec<gl::types::GLuint>,
@@ -433,9 +435,11 @@ impl Backend for State {
     fn load_texture<P: AsRef<Path>>(
         &mut self,
         path: P,
-        _settings: &TextureSettings
+        settings: &TextureSettings
     ) -> Result<Texture, image::ImageError> {
         use std::mem::transmute;
+        use gl_utils::GlSettings;
+        use opengl_graphics::Wrap;
 
         let image = match image::open(path)? {
             image::DynamicImage::ImageRgba8(img) => img,
@@ -443,13 +447,18 @@ impl Backend for State {
         };
         let (image_width, image_height) = image.dimensions();
         let mut texture_id = 0;
+        let internal_format = if settings.get_convert_gamma() {
+            gl::RGBA
+        } else {
+            gl::SRGB_ALPHA
+        };
         unsafe {
             gl::GenTextures(1, &mut texture_id);
             gl::BindTexture(gl::TEXTURE_2D, texture_id);
             gl::TexImage2D(
                 gl::TEXTURE_2D,
                 0,
-                gl::RGBA as i32,
+                internal_format as i32,
                 image_width as i32,
                 image_height as i32,
                 0,
@@ -460,14 +469,35 @@ impl Backend for State {
             gl::TexParameteri(
                 gl::TEXTURE_2D,
                 gl::TEXTURE_MAG_FILTER,
-                gl::LINEAR as i32
+                settings.get_gl_mag() as i32
             );
             gl::TexParameteri(
                 gl::TEXTURE_2D,
                 gl::TEXTURE_MIN_FILTER,
-                gl::LINEAR_MIPMAP_LINEAR as i32
+                settings.get_gl_min() as i32,
             );
-            gl::GenerateMipmap(gl::TEXTURE_2D);
+            gl::TexParameteri(
+                gl::TEXTURE_2D,
+                gl::TEXTURE_WRAP_S,
+                settings.get_gl_wrap_u() as i32,
+            );
+            gl::TexParameteri(
+                gl::TEXTURE_2D,
+                gl::TEXTURE_WRAP_T,
+                settings.get_gl_wrap_v() as i32,
+            );
+            if settings.get_wrap_u() == Wrap::ClampToBorder
+                || settings.get_wrap_v() == Wrap::ClampToBorder
+            {
+                gl::TexParameterfv(
+                    gl::TEXTURE_2D,
+                    gl::TEXTURE_BORDER_COLOR,
+                    settings.get_border_color().as_ptr(),
+                );
+            }
+            if settings.get_generate_mipmap() {
+                gl::GenerateMipmap(gl::TEXTURE_2D);
+            }
         }
         let id = self.textures.len();
         self.textures.push(texture_id);
