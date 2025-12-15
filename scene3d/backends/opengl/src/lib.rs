@@ -433,7 +433,7 @@ impl Backend for State {
     fn load_texture<P: AsRef<Path>>(
         &mut self,
         path: P,
-        _settings: &TextureSettings
+        settings: &TextureSettings
     ) -> Result<Texture, image::ImageError> {
         use std::mem::transmute;
 
@@ -443,13 +443,18 @@ impl Backend for State {
         };
         let (image_width, image_height) = image.dimensions();
         let mut texture_id = 0;
+        let internal_format = if settings.get_convert_gamma() {
+            gl::RGBA
+        } else {
+            gl::SRGB_ALPHA
+        };
         unsafe {
             gl::GenTextures(1, &mut texture_id);
             gl::BindTexture(gl::TEXTURE_2D, texture_id);
             gl::TexImage2D(
                 gl::TEXTURE_2D,
                 0,
-                gl::RGBA as i32,
+                internal_format as i32,
                 image_width as i32,
                 image_height as i32,
                 0,
