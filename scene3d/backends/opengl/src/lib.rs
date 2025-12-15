@@ -16,6 +16,8 @@ use turbine_scene3d::*;
 
 use std::path::Path;
 
+mod gl_utils;
+
 /// Implements OpenGL backend.
 pub struct State {
     shaders: Vec<gl::types::GLuint>,
@@ -436,6 +438,8 @@ impl Backend for State {
         settings: &TextureSettings
     ) -> Result<Texture, image::ImageError> {
         use std::mem::transmute;
+        use gl_utils::GlSettings;
+        use opengl_graphics::Wrap;
 
         let image = match image::open(path)? {
             image::DynamicImage::ImageRgba8(img) => img,
@@ -465,14 +469,35 @@ impl Backend for State {
             gl::TexParameteri(
                 gl::TEXTURE_2D,
                 gl::TEXTURE_MAG_FILTER,
-                gl::LINEAR as i32
+                settings.get_gl_mag() as i32
             );
             gl::TexParameteri(
                 gl::TEXTURE_2D,
                 gl::TEXTURE_MIN_FILTER,
-                gl::LINEAR_MIPMAP_LINEAR as i32
+                settings.get_gl_min() as i32,
             );
-            gl::GenerateMipmap(gl::TEXTURE_2D);
+            gl::TexParameteri(
+                gl::TEXTURE_2D,
+                gl::TEXTURE_WRAP_S,
+                settings.get_gl_wrap_u() as i32,
+            );
+            gl::TexParameteri(
+                gl::TEXTURE_2D,
+                gl::TEXTURE_WRAP_T,
+                settings.get_gl_wrap_v() as i32,
+            );
+            if settings.get_wrap_u() == Wrap::ClampToBorder
+                || settings.get_wrap_v() == Wrap::ClampToBorder
+            {
+                gl::TexParameterfv(
+                    gl::TEXTURE_2D,
+                    gl::TEXTURE_BORDER_COLOR,
+                    settings.get_border_color().as_ptr(),
+                );
+            }
+            if settings.get_generate_mipmap() {
+                gl::GenerateMipmap(gl::TEXTURE_2D);
+            }
         }
         let id = self.textures.len();
         self.textures.push(texture_id);
