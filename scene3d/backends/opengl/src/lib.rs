@@ -6,9 +6,10 @@ use vecmath::{
     Vector2,
     Vector3,
 };
+use opengl_graphics::TextureSettings;
 use opengl_graphics::shader_utils::{
     compile_shader,
-    uniform_location
+    uniform_location,
 };
 
 use turbine_scene3d::*;
@@ -429,7 +430,11 @@ impl Backend for State {
     }
 
     /// Load texture from path.
-    fn load_texture<P: AsRef<Path>>(&mut self, path: P) -> Result<Texture, image::ImageError> {
+    fn load_texture<P: AsRef<Path>>(
+        &mut self,
+        path: P,
+        _settings: &TextureSettings
+    ) -> Result<Texture, image::ImageError> {
         use std::mem::transmute;
 
         let image = match image::open(path)? {
