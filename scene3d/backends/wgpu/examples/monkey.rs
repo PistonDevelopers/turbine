@@ -89,8 +89,7 @@ fn main() {
         if capture_cursor {first_person.event(&e)};
 
         if let Some(args) = e.render_args() {
-            let surface_texture = window.surface.get_current_texture().unwrap();
-            scene.state.surface_texture = Some(surface_texture);
+            scene.state.start_render(&window.surface);
 
             let proj = get_projection(&window);
             scene.projection(proj);
@@ -104,12 +103,7 @@ fn main() {
 
             scene.draw(monkeys, &frame_graph);
 
-            scene.state.end_render_pass();
-            if let Some(surface_texture) = std::mem::replace(
-                &mut scene.state.surface_texture, None
-            ) {
-                surface_texture.present();
-            }
+            scene.state.end_render();
         }
 
         if let Some(button) = e.press_args() {
