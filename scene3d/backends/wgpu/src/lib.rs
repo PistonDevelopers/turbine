@@ -708,8 +708,12 @@ impl Backend for State {
     fn load_texture<P>(
         &mut self,
         path: P,
-        _settings: &TextureSettings,
-    ) -> Result<Texture, <Self as turbine_scene3d::Backend>::ImageError> where P: AsRef<Path> {
+        settings: &TextureSettings,
+    ) -> Result<Texture, <Self as Backend>::ImageError>
+        where P: AsRef<Path>
+    {
+        use texture::{Filter, Wrap};
+
         let image = match image::open(path)? {
             image::DynamicImage::ImageRgba8(img) => img,
             x => x.to_rgba8()
@@ -755,13 +759,40 @@ impl Backend for State {
         });
 
         let sampler = self.device.create_sampler(&wgpu::SamplerDescriptor {
-            address_mode_u: wgpu::AddressMode::Repeat,
-            address_mode_v: wgpu::AddressMode::Repeat,
+            address_mode_u: match settings.get_wrap_u() {
+                Wrap::ClampToEdge => wgpu::AddressMode::ClampToEdge,
+                Wrap::Repeat => wgpu::AddressMode::Repeat,
+                Wrap::MirroredRepeat => wgpu::AddressMode::MirrorRepeat,
+                Wrap::ClampToBorder => wgpu::AddressMode::ClampToBorder,
+            },
+            address_mode_v: match settings.get_wrap_v() {
+                Wrap::ClampToEdge => wgpu::AddressMode::ClampToEdge,
+                Wrap::Repeat => wgpu::AddressMode::Repeat,
+                Wrap::MirroredRepeat => wgpu::AddressMode::MirrorRepeat,
+                Wrap::ClampToBorder => wgpu::AddressMode::ClampToBorder,
+            },
             address_mode_w: wgpu::AddressMode::ClampToEdge,
-            mag_filter: wgpu::FilterMode::Linear,
-            min_filter: wgpu::FilterMode::Linear,
-            mipmap_filter: wgpu::FilterMode::Linear,
-            border_color: Some(wgpu::SamplerBorderColor::TransparentBlack),
+            mag_filter: match settings.get_mag() {
+                Filter::Linear => wgpu::FilterMode::Linear,
+                Filter::Nearest => wgpu::FilterMode::Nearest,
+            },
+            min_filter: match settings.get_min() {
+                Filter::Linear => wgpu::FilterMode::Linear,
+                Filter::Nearest => wgpu::FilterMode::Nearest,
+            },
+            mipmap_filter: match settings.get_mipmap() {
+                Filter::Linear => wgpu::FilterMode::Linear,
+                Filter::Nearest => wgpu::FilterMode::Nearest,
+            },
+            border_color: if settings.get_border_color() == [0.0; 4] {
+                Some(wgpu::SamplerBorderColor::TransparentBlack)
+            } else if settings.get_border_color() == [0.0, 0.0, 0.0, 1.0] {
+                Some(wgpu::SamplerBorderColor::OpaqueBlack)
+            } else if settings.get_border_color() == [1.0; 4] {
+                Some(wgpu::SamplerBorderColor::OpaqueWhite)
+            } else {
+                None
+            },
             ..Default::default()
         });
 
