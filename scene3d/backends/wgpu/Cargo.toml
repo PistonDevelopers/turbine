@@ -1,6 +1,6 @@
 [package]
 name = "turbine_scene3d-wgpu"
-version = "0.3.0"
+version = "0.4.0"
 authors = ["Sven Nilsen <bvssvni@gmail.com>"]
 description = "WGPU backend for Turbine-Scene3D"
 readme = "README.md"
@@ -18,10 +18,10 @@ path = "../../"
 [dependencies]
 vecmath = "1.0.0"
 image = "0.25.5"
-wgpu = "27.0.1"
+wgpu = "29.0.1"
 bytemuck = "1.24.0"
 piston-texture = "0.9.0"
 
 [dev-dependencies]
 camera_controllers = "0.36.0"
-piston_window = "0.138.2"
+piston_window = "0.146.0"

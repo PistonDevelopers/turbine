@@ -159,14 +159,14 @@ impl Prog {
         });
 
         let layouts = if let Some(texture_layout) = texture_layout {
-            vec![&uniform_layout, texture_layout]
-        } else {vec![&uniform_layout]};
+            vec![Some(&uniform_layout), Some(texture_layout)]
+        } else {vec![Some(&uniform_layout)]};
 
         let pipeline_layout = device.create_pipeline_layout(
             &wgpu::PipelineLayoutDescriptor {
                 label: Some("Pipeline Layout"),
                 bind_group_layouts: &layouts,
-                push_constant_ranges: &[],
+                immediate_size: 0,
             }
         );
 
@@ -265,8 +265,13 @@ impl State {
 
     /// Start rendering.
     pub fn start_render(&mut self, surface: &wgpu::Surface) {
-        let surface_texture = surface.get_current_texture().unwrap();
-        self.surface_texture = Some(surface_texture);
+        if let wgpu::CurrentSurfaceTexture::Success(surface_texture) =
+            surface.get_current_texture()
+        {
+            self.surface_texture = Some(surface_texture);
+        } else {
+            self.surface_texture = None;
+        }
     }
 
     /// End rendering.
@@ -457,6 +462,7 @@ impl Backend for State {
                 }),
                 occlusion_query_set: None,
                 timestamp_writes: None,
+                multiview_mask: None,
             });
         drop(render_pass);
 
@@ -781,8 +787,8 @@ impl Backend for State {
                 Filter::Nearest => wgpu::FilterMode::Nearest,
             },
             mipmap_filter: match settings.get_mipmap() {
-                Filter::Linear => wgpu::FilterMode::Linear,
-                Filter::Nearest => wgpu::FilterMode::Nearest,
+                Filter::Linear => wgpu::MipmapFilterMode::Linear,
+                Filter::Nearest => wgpu::MipmapFilterMode::Nearest,
             },
             border_color: if settings.get_border_color() == [0.0; 4] {
                 Some(wgpu::SamplerBorderColor::TransparentBlack)
@@ -888,6 +894,7 @@ impl State {
             }),
             occlusion_query_set: None,
             timestamp_writes: None,
+            multiview_mask: None,
         }).forget_lifetime();
 
         self.encoder = Some(encoder);

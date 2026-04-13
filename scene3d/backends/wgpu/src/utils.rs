@@ -222,8 +222,8 @@ pub fn primitive_state(
 pub fn depth_stencil_state() -> DepthStencilState {
     DepthStencilState {
         format: wgpu::TextureFormat::Depth32Float,
-        depth_write_enabled: true,
-        depth_compare: wgpu::CompareFunction::Less,
+        depth_write_enabled: Some(true),
+        depth_compare: Some(wgpu::CompareFunction::Less),
         stencil: wgpu::StencilState::default(),
         bias: wgpu::DepthBiasState::default(),
     }
@@ -258,7 +258,7 @@ pub fn render_pipeline(
         primitive: primitive_state(topology, polygon_mode, cull_mode),
         depth_stencil: Some(depth_stencil_state()),
         multisample: multisample_state(),
-        multiview: None,
+        multiview_mask: None,
         cache: None,
     })
 }
