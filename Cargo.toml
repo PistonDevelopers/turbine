@@ -23,7 +23,7 @@ version = "0.12.0"
 path = "process3d"
 
 [dependencies.turbine_reactive]
-version = "0.2.0"
+version = "0.3.0"
 path = "reactive"
 
 [dependencies.turbine_scene3d]
