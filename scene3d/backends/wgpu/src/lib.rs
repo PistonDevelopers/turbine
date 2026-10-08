@@ -424,7 +424,7 @@ impl Backend for State {
         self.cull_face_back = true;
     }
     fn clear(&mut self, color: [f32; 4], _settings: &turbine_scene3d::SceneSettings) {
-        let surface_texture = self.surface_texture.as_ref().unwrap();
+        let surface_texture = if let Some(x) = self.surface_texture.as_ref() {x} else {return};
         let surface_view = surface_texture
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());

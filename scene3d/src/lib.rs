@@ -187,8 +187,8 @@ pub struct ObjMesh {
 }
 
 impl ObjMesh {
-    /// Load OBJ file.
-    pub fn load<P: AsRef<Path>>(path: P) -> Result<ObjMesh, io::Error> {
+    /// Load meshes from OBJ file.
+    pub fn load<P: AsRef<Path>>(path: P) -> Result<Vec<ObjMesh>, io::Error> {
         use std::fs::File;
         use std::io::Read;
 
@@ -196,85 +196,86 @@ impl ObjMesh {
         let mut data = String::new();
         obj_file.read_to_string(&mut data)?;
         let obj_set = wavefront_obj::obj::parse(data).unwrap();
-        let obj = &obj_set.objects[0];
-        let temp_vertices = {
-            let mut res = vec![];
-            for v in &obj.vertices {
-                res.push(v.x as f32);
-                res.push(v.y as f32);
-                res.push(v.z as f32);
-            }
-            res
-        };
-        let temp_uvs = {
-            let mut res = vec![];
-            for uv in &obj.tex_vertices {
-                res.push(uv.u as f32);
-                res.push(1.0 - uv.v as f32);
-            }
-            res
-        };
-        let temp_normals = {
-            let mut res = vec![];
-            for normal in &obj.normals {
-                res.push(normal.x as f32);
-                res.push(normal.y as f32);
-                res.push(normal.z as f32);
-            }
-            res
-        };
-        let mut vertices = vec![];
-        let mut uvs = vec![];
-        let mut normals = vec![];
-        for geom in &obj.geometry {
-            for shape in &geom.shapes {
-                use wavefront_obj::obj::Primitive;
+        Ok(obj_set.objects.iter().map(|obj| {
+            let temp_vertices = {
+                let mut res = vec![];
+                for v in &obj.vertices {
+                    res.push(v.x as f32);
+                    res.push(v.y as f32);
+                    res.push(v.z as f32);
+                }
+                res
+            };
+            let temp_uvs = {
+                let mut res = vec![];
+                for uv in &obj.tex_vertices {
+                    res.push(uv.u as f32);
+                    res.push(1.0 - uv.v as f32);
+                }
+                res
+            };
+            let temp_normals = {
+                let mut res = vec![];
+                for normal in &obj.normals {
+                    res.push(normal.x as f32);
+                    res.push(normal.y as f32);
+                    res.push(normal.z as f32);
+                }
+                res
+            };
+            let mut vertices = vec![];
+            let mut uvs = vec![];
+            let mut normals = vec![];
+            for geom in &obj.geometry {
+                for shape in &geom.shapes {
+                    use wavefront_obj::obj::Primitive;
 
-                if let Primitive::Triangle(
-                    (a_v, Some(a_uv), Some(a_n)),
-                    (b_v, Some(b_uv), Some(b_n)),
-                    (c_v, Some(c_uv), Some(c_n))
-                ) = shape.primitive {
-                    vertices.push(temp_vertices[a_v * 3 + 0]);
-                    vertices.push(temp_vertices[a_v * 3 + 1]);
-                    vertices.push(temp_vertices[a_v * 3 + 2]);
+                    if let Primitive::Triangle(
+                        (a_v, Some(a_uv), Some(a_n)),
+                        (b_v, Some(b_uv), Some(b_n)),
+                        (c_v, Some(c_uv), Some(c_n))
+                    ) = shape.primitive {
+                        vertices.push(temp_vertices[a_v * 3 + 0]);
+                        vertices.push(temp_vertices[a_v * 3 + 1]);
+                        vertices.push(temp_vertices[a_v * 3 + 2]);
 
-                    vertices.push(temp_vertices[b_v * 3 + 0]);
-                    vertices.push(temp_vertices[b_v * 3 + 1]);
-                    vertices.push(temp_vertices[b_v * 3 + 2]);
+                        vertices.push(temp_vertices[b_v * 3 + 0]);
+                        vertices.push(temp_vertices[b_v * 3 + 1]);
+                        vertices.push(temp_vertices[b_v * 3 + 2]);
 
-                    vertices.push(temp_vertices[c_v * 3 + 0]);
-                    vertices.push(temp_vertices[c_v * 3 + 1]);
-                    vertices.push(temp_vertices[c_v * 3 + 2]);
+                        vertices.push(temp_vertices[c_v * 3 + 0]);
+                        vertices.push(temp_vertices[c_v * 3 + 1]);
+                        vertices.push(temp_vertices[c_v * 3 + 2]);
 
-                    uvs.push(temp_uvs[a_uv * 2 + 0]);
-                    uvs.push(temp_uvs[a_uv * 2 + 1]);
+                        uvs.push(temp_uvs[a_uv * 2 + 0]);
+                        uvs.push(temp_uvs[a_uv * 2 + 1]);
 
-                    uvs.push(temp_uvs[b_uv * 2 + 0]);
-                    uvs.push(temp_uvs[b_uv * 2 + 1]);
+                        uvs.push(temp_uvs[b_uv * 2 + 0]);
+                        uvs.push(temp_uvs[b_uv * 2 + 1]);
 
-                    uvs.push(temp_uvs[c_uv * 2 + 0]);
-                    uvs.push(temp_uvs[c_uv * 2 + 1]);
+                        uvs.push(temp_uvs[c_uv * 2 + 0]);
+                        uvs.push(temp_uvs[c_uv * 2 + 1]);
 
-                    normals.push(temp_normals[a_n * 3 + 0]);
-                    normals.push(temp_normals[a_n * 3 + 1]);
-                    normals.push(temp_normals[a_n * 3 + 2]);
+                        normals.push(temp_normals[a_n * 3 + 0]);
+                        normals.push(temp_normals[a_n * 3 + 1]);
+                        normals.push(temp_normals[a_n * 3 + 2]);
 
-                    normals.push(temp_normals[b_n * 3 + 0]);
-                    normals.push(temp_normals[b_n * 3 + 1]);
-                    normals.push(temp_normals[b_n * 3 + 2]);
+                        normals.push(temp_normals[b_n * 3 + 0]);
+                        normals.push(temp_normals[b_n * 3 + 1]);
+                        normals.push(temp_normals[b_n * 3 + 2]);
 
-                    normals.push(temp_normals[c_n * 3 + 0]);
-                    normals.push(temp_normals[c_n * 3 + 1]);
-                    normals.push(temp_normals[c_n * 3 + 2]);
+                        normals.push(temp_normals[c_n * 3 + 0]);
+                        normals.push(temp_normals[c_n * 3 + 1]);
+                        normals.push(temp_normals[c_n * 3 + 2]);
+                    }
                 }
             }
-        }
-        Ok(ObjMesh {
-            vertices,
-            uvs,
-            normals
-        })
+            ObjMesh {
+                vertices,
+                uvs,
+                normals
+            }
+        }).collect())
     }
 }
 
@@ -282,6 +283,5 @@ impl ObjMesh {
 mod tests {
     #[test]
     fn it_works() {
-        assert_eq!(2 + 2, 4);
     }
 }
