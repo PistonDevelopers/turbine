@@ -357,8 +357,11 @@ impl<T> Reactor<T> {
                 let d = self.eval1(d, env);
                 let _1 = T::one();
                 let ab = a * (_1 - arg) + b * arg;
+                let bc = b * (_1 - arg) + c * arg;
                 let cd = c * (_1 - arg) + d * arg;
-                ab * (_1 - arg) + cd * arg
+                let abc = ab * (_1 - arg) + bc * arg;
+                let bcd = bc * (_1 - arg) + cd * arg;
+                abc * (_1 - arg) + bcd * arg
             }
             Segment(f, a, b) => {
                 let a = self.eval1(a, env);
@@ -424,8 +427,11 @@ impl<T> Reactor<T> {
                 let d = self.eval2(d, env);
                 let _1 = T::one();
                 let ab = add(scale(a, _1 - arg), scale(b, arg));
+                let bc = add(scale(b, _1 - arg), scale(c, arg));
                 let cd = add(scale(c, _1 - arg), scale(d, arg));
-                add(scale(ab, _1 - arg), scale(cd, arg))
+                let abc = add(scale(ab, _1 - arg), scale(bc, arg));
+                let bcd = add(scale(bc, _1 - arg), scale(cd, arg));
+                add(scale(abc, _1 - arg), scale(bcd, arg))
             }
             Segment(f, a, b) => {
                 let a = self.eval1(a, env);
@@ -491,8 +497,11 @@ impl<T> Reactor<T> {
                 let d = self.eval3(d, env);
                 let _1 = T::one();
                 let ab = add(scale(a, _1 - arg), scale(b, arg));
+                let bc = add(scale(b, _1 - arg), scale(c, arg));
                 let cd = add(scale(c, _1 - arg), scale(d, arg));
-                add(scale(ab, _1 - arg), scale(cd, arg))
+                let abc = add(scale(ab, _1 - arg), scale(bc, arg));
+                let bcd = add(scale(bc, _1 - arg), scale(cd, arg));
+                add(scale(abc, _1 - arg), scale(bcd, arg))
             }
             Segment(f, a, b) => {
                 let a = self.eval1(a, env);
@@ -558,8 +567,11 @@ impl<T> Reactor<T> {
                 let d = self.eval4(d, env);
                 let _1 = T::one();
                 let ab = add(scale(a, _1 - arg), scale(b, arg));
+                let bc = add(scale(b, _1 - arg), scale(c, arg));
                 let cd = add(scale(c, _1 - arg), scale(d, arg));
-                add(scale(ab, _1 - arg), scale(cd, arg))
+                let abc = add(scale(ab, _1 - arg), scale(bc, arg));
+                let bcd = add(scale(bc, _1 - arg), scale(cd, arg));
+                add(scale(abc, _1 - arg), scale(bcd, arg))
             }
             Segment(f, a, b) => {
                 let a = self.eval1(a, env);
